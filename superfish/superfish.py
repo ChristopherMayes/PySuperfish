@@ -1,9 +1,12 @@
 from . import parsers
+from .plot import plot_wall
 
 import os
 import subprocess
 import tempfile
 from time import time
+
+
 
 
 
@@ -141,6 +144,10 @@ class Superfish:
         self.output['sfo'] = parsers.parse_sfo(sfofile)
         
         self.vprint('Parsed output:', sfofile)
+        
+        
+    def plot_wall(self, **kwargs):
+            plot_wall(self.output['sfo']['wall_segments'], **kwargs)
         
         
     

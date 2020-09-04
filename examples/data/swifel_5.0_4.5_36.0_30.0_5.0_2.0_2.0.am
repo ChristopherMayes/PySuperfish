@@ -1,0 +1,75 @@
+filename: swifel_5.0_4.5_36.0_30.0_5.0_2.0_2.0.am
+SWIFEL Gun - Automatically generated for:
+    gap: 5.0 cm
+    nose radius: 4.5 cm
+    nose length: 36.0 cm
+    cavity radius: 30.0 cm
+    anode radius: 5.0 cm
+    anode length: 2.0 cm
+    pipe radius: 2.0 cm
+    freq 199.6 MHz
+    
+    
+Quarter-wave SRF photoinjector @ 199.6 MHz w/elliptical end plate,
+&REG KPROB=1                     ; Superfish problem
+MAT=1                            ; Material air or empty space
+FREQ=199.6                       ; Mode frequency
+FREQD=199.6                        ; Design frequency, for transit-time factors
+KMETHOD=1                        ; Use particle beta to compute transit time
+BETA=0.95                        ; Particle beta
+BETAD=0.95                       ; Design beta
+NBSUP=1,NBSLO=0,NBSRT=1,NBSLF=1  ; Boundary conditions
+LINES=1                          ; Fix internal points on line regions
+ICYLIN=1                         ; X=>Z,Y=>R, cylindrical coordinates
+NORM=4
+NRESIST=1 
+;EZEROT=16672000                 ; Normalize to point to point field
+ENORM=30000000.                  ; Cathode field
+XNORM1=50.50                     ; Cathode x position
+XNORM2=50.51                     ; Just in front of cathode
+YNORM1=0.0                       ; On axis
+YNORM2=0.0                       ; On axis
+SCCAV=1,                         ; Drift tube linac
+RMASS=-1                         ; Rest mass value or indicator
+EPSO=1.0E-6                      ; Mesh optimization convergence parameter
+IRTYPE=1                         ; Rs method: Superconductor formula
+TEMPK=4.2                        ; Superconductor temperature, degrees K
+TC=9.2                           ; Critical temperature, degrees K
+RESIDR=10.D-9                    ; Residual resistance
+XDRI=35                          ; Drive point X coordinate
+YDRI=30                          ; Drive point Y coordinate
+DSLOPE=-1                        ; Allow convergence in 1 iteration
+XREG=45.525,48,49.2,50.4,52,53,57  ; Mesh spacing in X direction
+KREG=-1,172,33,48,120,64,20,33
+KMAX=60
+YREG=0.9,1.5,11
+LREG=-1,90,24,127
+LMAX=64                         ; Mesh spacing in Y direction
+CONV=1.0
+&
+; SRC gun cavity and cathode support with high resolution mesh
+; Rev. 1 - changed cathode stem outer conductor to 10cm ID and moved 
+;   copper transition back to 12.5 cm to put flange at current zero
+; Rev. 2 - changed end plate to ellipse
+; Rev. 3 - change freq to 199.6 MHz
+;cathode face
+&PO x=50, y=0 &
+;cavity
+&PO X=50.0, Y=1.9332070725186377 &
+&PO nt=4, radius=4.0, X=47.666618841972856, Y=5.569466364095775 &
+&PO X=13.107181897507505, Y=21.409208296975727 &
+&PO nt=5, radius=4.5, X=14.982128094726967, Y=30.0 &
+&PO X=48.5, Y=30.0 &
+;elliptical end
+&PO NT=2, X0=48.5, Y0=9.0, A=8.5, B=21.0, X=8.5, Y= 0 &
+&PO X=57.0, Y=8.60555127546399 &
+&PO nt=5, radius=2.0, X=56.66410058867569, Y=7.496150883013531 &
+;Anode
+&PO X=55.33589941132431, Y=5.503849116986469 &
+&PO nt=4, radius=2.0, X=55.0, Y=4.39444872453601 &
+&PO X=55.0, Y=3.0 &
+&PO nt=4, radius=1, X=56.0, Y=2.0 &
+&PO X=73.0, Y=2.0 &
+&PO X=73, Y=0.0 &
+&PO X=50.0, Y=0.0 &
+&2.5

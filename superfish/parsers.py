@@ -95,7 +95,7 @@ def process_group(group, verbose=False):
         d['type'] = 'wall_segment'
         line1 = rtype # This should be parsed fully
         
-        d['data'] = parse_sfo_segment([line1]+lines)
+        d.update(parse_sfo_segment([line1]+lines))
         
         
     else:
@@ -184,9 +184,9 @@ def parse_sfo_segment(lines):
             
             inside=False
             
-
+    assert len(dats)==1, 'multiple blocks found' 
             
-    return {'wall':dats, 'info':info}
+    return {'wall':dats[0], 'info':info}
     
 
 
@@ -199,8 +199,6 @@ def parse_sfo_segment(lines):
     
 def parse_sfo_summary_group(lines): 
     """
-    
-    
     """    
     d_vals = {}
     d_units = {}
@@ -208,10 +206,10 @@ def parse_sfo_summary_group(lines):
         if line == "":
             break
         else:
-            d_val, d_unit = parse_simple_summary_line(line)
+            d_val, d_unit = parse_sfo_summary_group_line(line)
             d_vals.update(d_val)
             d_units.update(d_unit)
-    return d_vals, d_units    
+    return d_vals, d_units       
     
 def parse_simple_summary_line(line):
     # deal with simple line with one key and one value
