@@ -1,0 +1,129 @@
+filename: swifel_7.0_cm_gap_2_cm_pipe.am
+SWIFEL Gun - Automatically generated for:
+    gap: 7.0 cm
+    pipe radius: 2 cm
+    freq 186.2308195278025 MHz
+Quarter-wave SRF photoinjector @ 186.2308195278025 MHz w/elliptical end plate,
+&REG KPROB=1                     ; Superfish problem
+MAT=1                            ; Material air or empty space
+FREQ=186.2308195278025                       ; Mode frequency
+FREQD=186.2308195278025                        ; Design frequency, for transit-time factors
+KMETHOD=1                        ; Use particle beta to compute transit time
+BETA=0.95                        ; Particle beta
+BETAD=0.95                       ; Design beta
+NBSUP=1,NBSLO=0,NBSRT=1,NBSLF=1  ; Boundary conditions
+LINES=1                          ; Fix internal points on line regions
+ICYLIN=1                         ; X=>Z,Y=>R, cylindrical coordinates
+NORM=4
+NRESIST=1 
+;EZEROT=16672000                 ; Normalize to point to point field
+ENORM=30000000.                  ; Cathode field
+XNORM1=50.50                     ; Cathode x position
+XNORM2=50.51                     ; Just in front of cathode
+YNORM1=0.0                       ; On axis
+YNORM2=0.0                       ; On axis
+SCCAV=1,                         ; Drift tube linac
+RMASS=-1                         ; Rest mass value or indicator
+EPSO=1.0E-6                      ; Mesh optimization convergence parameter
+IRTYPE=1                         ; Rs method: Superconductor formula
+TEMPK=4.2                        ; Superconductor temperature, degrees K
+TC=9.2                           ; Critical temperature, degrees K
+RESIDR=10.D-9                    ; Residual resistance
+XDRI=35                          ; Drive point X coordinate
+YDRI=30                          ; Drive point Y coordinate
+DSLOPE=-1                        ; Allow convergence in 1 iteration
+XREG=45.525,48,49.2,50.4,52,53,57  ; Mesh spacing in X direction
+KREG=-1,172,33,48,120,64,20,33
+KMAX=60
+YREG=0.9,1.5,11
+LREG=-1,90,24,127
+LMAX=64                         ; Mesh spacing in Y direction
+CONV=1.0
+&
+; SRC gun cavity and cathode support with high resolution mesh
+; Rev. 1 - changed cathode stem outer conductor to 10cm ID and moved 
+;   copper transition back to 12.5 cm to put flange at current zero
+; Rev. 2 - changed end plate to ellipse
+; Rev. 3 - change freq to 199.6 MHz
+;cathode face
+&PO x=50, y=0 &
+&PO x=50, y=0.35 &
+&PO x=50, y=0.60 &
+;cathode stem and transition to 2.5 inch od center conductor
+&po nt=4, radius=0.10, x=49.9, y=0.70 &
+&PO X=48.0, Y=0.70 &
+&PO x=45.525, Y=3.175 &
+&PO X=-11.0, Y=3.175 &
+&PO X=-19.0, Y=3.175 &
+;outer conductor of coax (10cm id tube) with transition to copper at 12.5 cm
+&PO X=-19.0, y=5.0 &
+&PO X=-10, Y=5 &
+&PO X=1, Y=5.0 &
+&PO nt=4, radius=0.2, x=1.2, y=5.2 &
+&PO nt=5, radius=0.2, x=1.4, y=5.4 &
+&PO nt=5, radius=0.2, x=1.6, y=5.2 &
+&PO nt=4, radius=0.2, x=1.8, y=5 &
+&PO nt=4, radius=0.2, x=2.0, y=5.2 &
+&PO nt=5, radius=0.2, x=2.2, y=5.4 &
+&PO nt=5, radius=0.2, x=2.4, y=5.2 &
+&PO nt=4, radius=0.2, x=2.6, y=5.0 &
+&PO nt=4, radius=0.2, x=2.8, y=5.2 &
+&PO nt=5, radius=0.2, x=3, y=5.4 &
+&PO nt=5, radius=0.2, x=3.2, y=5.2 &
+&PO nt=4, radius=0.2, x=3.4, y=5.0 &
+&PO nt=4, radius=0.2, x=3.6, y=5.2 &
+&PO nt=5, radius=0.2, x=3.8, y=5.4 &
+&PO nt=5, radius=0.2, x=4.0, y=5.2 &
+&PO nt=4, radius=0.2, x=4.2, y=5.0 &
+&PO nt=4, radius=0.2, x=4.4, y=5.2 &
+&PO nt=5, radius=0.2, x=4.6, y=5.4 &
+&PO nt=5, radius=0.2, x=4.8, y=5.2 &
+&PO nt=4, radius=0.2, x=5, y=5.0 &
+&PO nt=4, radius=0.2, x=5.2, y=5.2 &
+&PO nt=5, radius=0.2, x=5.4, y=5.4 &
+&PO nt=5, radius=0.2, x=5.6, y=5.2 &
+&PO nt=4, radius=0.2, x=5.8, y=5.0 &
+&PO nt=4, radius=0.2, x=6.0, y=5.2 &
+&PO nt=5, radius=0.2, x=6.2, y=5.4 &
+&PO nt=5, radius=0.2, x=6.4, y=5.2 &
+&PO nt=4, radius=0.2, x=6.6, y=5.0 &
+&PO nt=4, radius=0.2, x=6.8, y=5.2 &
+&PO nt=5, radius=0.2, x=7, y=5.4 &
+&PO nt=5, radius=0.2, x=7.2, y=5.2 &
+&PO nt=4, radius=0.2, x=7.4, y=5.0 &
+&PO nt=4, radius=0.2, x=7.6, y=5.2 &
+&PO nt=5, radius=0.2, x=7.8, y=5.4 &
+&PO nt=5, radius=0.2, x=8, y=5.2 &
+&PO nt=4, radius=0.2, x=8.2, y=5.0 &
+&PO nt=4, radius=0.2, x=8.4, y=5.2 &
+&PO nt=5, radius=0.2, x=8.6, y=5.4 &
+&PO nt=5, radius=0.2, x=8.8, y=5.2 &
+&PO nt=4, radius=0.2, x=9, y=5.0 &
+&PO X=12.5, Y=5.0 &
+&PO X=20, Y=5.0 &
+&PO X=48.0, Y=5.0 &
+;transition to cathode hole 
+&PO X=49.2, Y=3.8 &
+&PO X=49.2, Y=1.5 &
+&po nt=4, radius=0.7, x=49.9, y=0.85 &
+;&PO X=49.95, Y=0.85 &
+&po nt=4, radius=0.10, x=50.0, y=0.95 &
+;cavity
+&PO X=50.0, Y=3 &
+&PO nt=4, radius=10, X=43.153, Y=12.49 &
+&PO X=16.851, Y=21.23 &
+&po nt=5, radius=4.5, x=18.27, y=30 &
+; weld bump
+;&PO nt=5, radius=0.025, x=18.295, y=29.975 &
+;&PO nt=4, radius=0.025, x=18.32, y=29.95 &
+;&PO x=18.5, y=29.95 &
+;&PO nt=4, radius=0.025, x=18.525, y=29.975 &
+;&PO nt=5, radius=0.025, x=18.55, y=30.0 &
+&PO X=48.5, Y=30 &
+;elliptical end
+&PO NT=2, X0=48.5, Y0=3.0, A=8.5, B=27.0, X=8.5, Y= 0 &
+&PO nt=4, radius=1, X=58.0, Y=2 &
+&PO X=73.0, Y=2 &
+&PO X=73, Y=0.0 &
+&PO X=50.0, Y=0.0 &
+&2.5
