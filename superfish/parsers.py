@@ -109,9 +109,16 @@ def process_group(group, verbose=False):
     return d
 
 
-
+#_________________________________
 #_________________________________
 # Individual parsers
+
+
+
+#_________________________________
+# Wall segments
+
+
 
 
 def parse_wall_segment_line1(line):
@@ -184,54 +191,179 @@ def parse_sfo_segment(lines):
 
 
 
+#_________________________________
+# Summary
+
+
+    
+    
 def parse_sfo_summary_group(lines): 
     """
     
     
-    """
-    
-    
-    dict_vals = {}
-    dict_units = {}
-    for s in lines:
-        if s == "":
+    """    
+    d_vals = {}
+    d_units = {}
+    for line in lines:
+        if line == "":
             break
         else:
-            list = s.split("=")
-            # split using ","
-            results = list[-1].split(",")
-            key = "".join(list[0:-1])
-            # case 1: only one out put, dict reference to a single value/ unit
-            if len(results) == 1:
-                s = results[0]
-                s = s.strip()
-                s = s.split(" ")
-                if len(s) == 1:
-                    val = s[0]
-                    unit = ""
-                else:
-                    val = s[0]
-                    unit = s[1]
-                val = float(val)
-                dict_vals.update({key: val})
-                dict_units.update({key: unit})
-            # case 2: multiple outputs, dict reference to list of values/units
-            else:
-                vals = []
-                units = []
-                for s in results:
-                    s = s.strip()
-                    s = s.split(" ")
-                    if len(s) == 1:
-                        val = s[0]
-                        unit = ""
-                    else:
-                        val = s[0]
-                        unit = s[1]
-                    val = float(val)
-                    vals.append(val)
-                    units.append(unit)
-                dict_vals.update({key: vals})
-                dict_units.update({key: units})
-    return dict_vals, dict_units
+            d_val, d_unit = parse_simple_summary_line(line)
+            d_vals.update(d_val)
+            d_units.update(d_unit)
+    return d_vals, d_units    
+    
+def parse_simple_summary_line(line):
+    # deal with simple line with one key and one value
+    d_val = {}
+    d_unit = {}
+    line = line.split("=")
+    key = line[0].strip()
+    val = line[-1]
+    val = val.strip()
+    val = val.split(" ")
+    d_val[key] = float(val[0])
+    if len(val) > 1:
+        d_unit[key] = val[1]
+    else:
+        d_unit[key] = ""
+    return d_val, d_unit    
+    
+def parse_sfo_summary_group_line(line):
+    d_val = {}
+    d_unit = {}
+    if line.startswith('Field normalization'):
+        line = line.split("=")
+        val = line[-1]
+        val = val.strip()
+        val = val.split(" ")
+        d_val['Enorm'] = float(val[0])
+        d_unit['Enorm'] = val[1]
+        return d_val, d_unit
+# 'for the integration path from point Z1,R1 =     50.50000 cm,   0.00000 cm',
+    if line.startswith('for the integration path'):
+        return d_val, d_unit
+#  'to ending point                     Z2,R2 =     50.51000 cm,   0.00000 cm',
+    if line.startswith('to ending point'):
+        return d_val, d_unit
+    if line.startswith('Beta '):
+        # custom parse the beta line
+        line = line.split("=")
+        beta = line[1].strip()
+        beta = beta.split(" ")
+        beta = beta[0]
+        ke = line[-1]
+        ke = ke.strip()
+        ke = ke.split(" ")
+        ke = ke[0]
+        d_val['beta'] = float(beta)
+        d_val['kinetic_energy'] = float(ke)
+        d_unit['beta'] = ""
+        d_unit['kinetic_energy'] = "MeV"
+        return d_val, d_unit
+#   'Q    =  0.334933E+10      Shunt impedance =  2001715.397 MOhm/m',
+    if line.startswith('Q '):
+        # Q factor line
+        line = line.split("=")
+        v1 = line[1].strip()
+        v1 = v1.split(" ")
+        v1 = v1[0]
+        v2 = line[-1]
+        v2 = v2.strip()
+        v2 = v2.split(" ")
+        v2 = v2[0]
+        d_val['Q'] = float(v1)
+        d_val['Shunt impedance'] = float(v2)
+        d_unit['Q'] = ""
+        d_unit['Shunt impedance'] = "MOhm/m"
+        return d_val, d_unit
+#          'Rs*Q =    81.364 Ohm                Z*T*T =  1956056.397 MOhm/m',
+    if line.startswith('Rs*Q '):
+        # Q factor line
+        line = line.split("=")
+        v1 = line[1].strip()
+        v1 = v1.split(" ")
+        v1 = v1[0]
+        v2 = line[-1]
+        v2 = v2.strip()
+        v2 = v2.split(" ")
+        v2 = v2[0]
+        d_val['Rs*Q'] = float(v1)
+        d_val['Z*T*T'] = float(v2)
+        d_unit['Rs*Q'] = "Ohm"
+        d_unit['Z*T*T'] = "MOhm/m"
+        return d_val, d_unit
+# 'r/Q  =   134.323 Ohm  Wake loss parameter =      0.04044 V/pC',
+    if line.startswith('r/Q '):
+        # r/Q line
+        line = line.split("=")
+        v1 = line[1].strip()
+        v1 = v1.split(" ")
+        v1 = v1[0]
+        v2 = line[-1]
+        v2 = v2.strip()
+        v2 = v2.split(" ")
+        v2 = v2[0]
+        d_val['r/Q'] = float(v1)
+        d_val['Wake loss parameter'] = float(v2)
+        d_unit['r/Q'] = "Ohm"
+        d_unit['Wake loss parameter'] = "V/pC"
+        return d_val, d_unit
+#  'Average magnetic field on the outer wall  =      16678.8 A/m, 0.337887 mW/cm^2',
+    if line.startswith('Average magnetic '):
+        # Average magnetic field line
+        line = line.split("=")
+        val = line[-1]
+        val = val.strip()
+        val = val.split(",")
+        v1 = val[0].split(" ")
+        v1 = v1[0]
+        d_val['AvgH'] = float(v1)
+        d_unit['AvgH'] = "A/m"
+        return d_val, d_unit
+#  'Maximum H (at Z,R = 25.1487,18.4727)      =       41189. A/m, 2.06066 mW/cm^2',
+    if line.startswith('Maximum H '):
+        # Maximum H line
+        line = line.split("=")
+        val = line[1].strip()
+        val = val.split(",")
+        v1 = val[0]
+        v2 = val[1].split(")")
+        v2 = v2[0]
+        v3 = line[-1]
+        v3 = v3.strip()
+        v3 = v3.split(",")
+        v3 = v3[0].split(" ")
+        v3 = v3[0]
+        d_val['MaxH_z'] = float(v1)
+        d_val['MaxH_r'] = float(v2)
+        d_val['MaxH'] = float(v3)
+        d_unit['MaxH_z'] = 'cm'
+        d_unit['MaxH_r'] = 'cm'
+        d_unit['MaxH'] = "A/m"
+        return d_val, d_unit
+#  'Maximum E (at Z,R = 49.9969,0.624269)     =      41.1564 MV/m, 2.84161 Kilp.',    
+    if line.startswith('Maximum E '):
+        # Maximum E line
+        line = line.split("=")
+        val = line[1].strip()
+        val = val.split(",")
+        v1 = val[0]
+        v2 = val[1].split(")")
+        v2 = v2[0]
+        v3 = line[-1]
+        v3 = v3.strip()
+        v3 = v3.split(",")
+        v3 = v3[0].split(" ")
+        v3 = v3[0]
+        d_val['MaxE_z'] = float(v1)
+        d_val['MaxE_r'] = float(v2)
+        d_val['MaxE'] = float(v3)
+        d_unit['MaxE_z'] = 'cm'
+        d_unit['MaxE_r'] = 'cm'
+        d_unit['MaxE'] = "MV/m"
+        return d_val, d_unit
+    else:
+        d_val, d_unit = parse_simple_summary_line(line)
+    return d_val, d_unit
 
