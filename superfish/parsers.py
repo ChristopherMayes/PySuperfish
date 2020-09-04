@@ -216,6 +216,8 @@ def parse_simple_summary_line(line):
     d_val = {}
     d_unit = {}
     line = line.split("=")
+    if len(line) == 1:
+        return d_val, d_unit
     key = line[0].strip()
     val = line[-1]
     val = val.strip()
@@ -225,7 +227,7 @@ def parse_simple_summary_line(line):
         d_unit[key] = val[1]
     else:
         d_unit[key] = ""
-    return d_val, d_unit    
+    return d_val, d_unit     
     
 def parse_sfo_summary_group_line(line):
     d_val = {}
