@@ -10,52 +10,52 @@ def parse_automesh(file):
 def parse_sfo(filename, verbose=False):
     """
     Master parser for the SFO file.
-    
-    Returns the output dict. 
-    
+
+    Returns the output dict.
+
     """
-    
+
     groups = parse_sfo_into_groups(filename)
-    
-    
+
+
     d = {
         'wall_segments':[],
         'other':{}
     }
     segments = []
-    
+
     for g in groups:
-        dat = process_group(g, verbose=verbose) 
+        dat = process_group(g, verbose=verbose)
         type = dat['type']
-        
+
         if type == 'wall_segment':
             d['wall_segments'].append(dat)
         elif type in ['summary']:
             d[type] = dat
         else:
             d['other'][type] = dat
-            
+
     return d
-    
-  
+
+
 
 
 def parse_sfo_into_groups(filename):
     """
     Parses SFO file into groups according to separator:
     '-------------------------------------------------------------------------------'
-    
+
     Returns a list of dicts, with:
         raw_type: the first line
         lines: list of lines
-    
+
     """
     groups = []
-    
-    
-    
+
+
+
     sep = '-------------------------------------------------------------------------------'
-    
+
     with open(filename, 'r') as f:
         line = f.readline()
         g = {'raw_type':'header', 'lines':[line]}
@@ -67,13 +67,13 @@ def parse_sfo_into_groups(filename):
                 gname = f.readline().strip()
                 while not gname:
                     gname = f.readline().strip()
-                                   
-                g = {'raw_type': gname, 'lines':[]}   
-                groups.append(g)          
+
+                g = {'raw_type': gname, 'lines':[]}
+                groups.append(g)
             else:
                 # regular line
                 g['lines'].append(line)
-            
+
             line = f.readline()
     return groups
 
@@ -82,30 +82,30 @@ def process_group(group, verbose=False):
     """
     processes a single output group dict into usable data.
     """
-    
+
     rtype = group['raw_type']
     lines = group['lines']
 
     d = {}
-    
+
     if rtype.startswith('All calculated values below refer to the mesh geometry only'):
         d['type'] = 'summary'
         d['data'], d['units'] = parse_sfo_summary_group(lines)
     elif rtype.startswith('Power and fields on wall segment'):
         d['type'] = 'wall_segment'
         line1 = rtype # This should be parsed fully
-        
+
         d.update(parse_sfo_segment([line1]+lines))
-        
-        
+
+
     else:
         # No parser yet:
         if verbose:
             print('No parser for:', rtype)
-        
+
         d['type'] = rtype
         d['lines'] = lines
-    
+
     return d
 
 
@@ -132,7 +132,7 @@ def parse_wall_segment_line1(line):
     k0, l0 = kl0.split(',')
     d['K_beg'], d['L_beg'] = int(k0), int(l0)
     k1, l1 = kl1.split(',')
-    d['K_end'], d['L_end'] = int(k1), int(l1)    
+    d['K_end'], d['L_end'] = int(k1), int(l1)
     return d
 
 
@@ -141,25 +141,25 @@ def parse_sfo_segment(lines):
     Parses lines that start with:
         'Power and fields on wall segment'
     """
-    
+
     # key = value lines
-    
+
     info = parse_wall_segment_line1(lines[0])
-    
+
     M = "                      (cm)          (cm)         (A/m)       (V/m)"
     inside = False
-    
+
     dats = []
-    
+
     for L in lines[1:]:
         L = L.strip()
-        
+
         # Look for key=value
         if '=' in L:
             key, val = L.split('=')
             info[key] = val
             continue
-        
+
         if L == M.strip():
             inside = True
             dat = {'Z':[], 'R':[], 'H':[], 'E':[]}
@@ -167,27 +167,27 @@ def parse_sfo_segment(lines):
             continue
         if not inside:
             continue
-        
+
         x = L.split()
         if len(x) == 7:
             x = x[3:]
-        
+
         if len(x) == 4:
             dat['Z'].append(float(x[0]))
-            dat['R'].append(float(x[1])) 
-            dat['H'].append(float(x[2]))   
+            dat['R'].append(float(x[1]))
+            dat['H'].append(float(x[2]))
             dat['E'].append(float(x[3]))
         else:
             # Exiting
             for k, v in dat.items():
                 dat[k] = np.array(v)
-            
+
             inside=False
-            
-    assert len(dats)==1, 'multiple blocks found' 
-            
+
+    assert len(dats)==1, 'multiple blocks found'
+
     return {'wall':dats[0], 'info':info}
-    
+
 
 
 
@@ -195,11 +195,11 @@ def parse_sfo_segment(lines):
 # Summary
 
 
-    
-    
-def parse_sfo_summary_group(lines): 
+
+
+def parse_sfo_summary_group(lines):
     """
-    """    
+    """
     d_vals = {}
     d_units = {}
     for line in lines:
@@ -209,8 +209,8 @@ def parse_sfo_summary_group(lines):
             d_val, d_unit = parse_sfo_summary_group_line(line)
             d_vals.update(d_val)
             d_units.update(d_unit)
-    return d_vals, d_units       
-    
+    return d_vals, d_units
+
 def parse_simple_summary_line(line):
     # deal with simple line with one key and one value
     d_val = {}
@@ -227,8 +227,8 @@ def parse_simple_summary_line(line):
         d_unit[key] = val[1]
     else:
         d_unit[key] = ""
-    return d_val, d_unit     
-    
+    return d_val, d_unit
+
 def parse_sfo_summary_group_line(line):
     d_val = {}
     d_unit = {}
@@ -242,9 +242,35 @@ def parse_sfo_summary_group_line(line):
         return d_val, d_unit
 # 'for the integration path from point Z1,R1 =     50.50000 cm,   0.00000 cm',
     if line.startswith('for the integration path'):
+        line = line.split("=")
+        val = line[-1]
+        val = val.strip()
+        val = val.split(",")
+        v1 = val[0].split(" ")
+        v1 = v1[0]
+        v2 = val[1].strip()
+        v2 = v2.split(" ")
+        v2 = v2[0]
+        d_val['integration_Z1'] = float(v1)
+        d_unit['integration_Z1'] = "cm"
+        d_val['integration_R1'] = float(v2)
+        d_unit['integration_R1'] = "cm"
         return d_val, d_unit
 #  'to ending point                     Z2,R2 =     50.51000 cm,   0.00000 cm',
     if line.startswith('to ending point'):
+        line = line.split("=")
+        val = line[-1]
+        val = val.strip()
+        val = val.split(",")
+        v1 = val[0].split(" ")
+        v1 = v1[0]
+        v2 = val[1].strip()
+        v2 = v2.split(" ")
+        v2 = v2[0]
+        d_val['integration_Z2'] = float(v1)
+        d_unit['integration_Z2'] = "cm"
+        d_val['integration_R2'] = float(v2)
+        d_unit['integration_R2'] = "cm"
         return d_val, d_unit
     if line.startswith('Beta '):
         # custom parse the beta line
@@ -342,7 +368,7 @@ def parse_sfo_summary_group_line(line):
         d_unit['MaxH_r'] = 'cm'
         d_unit['MaxH'] = "A/m"
         return d_val, d_unit
-#  'Maximum E (at Z,R = 49.9969,0.624269)     =      41.1564 MV/m, 2.84161 Kilp.',    
+#  'Maximum E (at Z,R = 49.9969,0.624269)     =      41.1564 MV/m, 2.84161 Kilp.',
     if line.startswith('Maximum E '):
         # Maximum E line
         line = line.split("=")
@@ -366,4 +392,3 @@ def parse_sfo_summary_group_line(line):
     else:
         d_val, d_unit = parse_simple_summary_line(line)
     return d_val, d_unit
-
