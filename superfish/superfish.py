@@ -16,7 +16,7 @@ class Superfish:
     # Class attributes for the container
     _container_image = 'hhslepicka/poisson-superfish:latest'
     _container_command = 'docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}'
-    _windows_exe_path= 'C:\\LANL\\',  # Windows only'
+    _windows_exe_path= 'C:\\LANL\\'  # Windows only'
     
 
         
@@ -48,9 +48,12 @@ class Superfish:
 
         if use_container == 'auto':
             if platform.system() == 'Windows' and os.path.exists(self._windows_exe_path):
-                use_container = False
+                self.use_container = False
+                self.vprint(f'Using executables installed in {self._windows_exe_path}')
+                
             else:
-                use_container = True
+                self.vprint('Using container on Windows')
+                self.use_container = True
             
         else:
             self.use_container = use_container
@@ -64,7 +67,6 @@ class Superfish:
     @property
     def automesh_name(self):
         return self.basename+'.AM'
-    
         
     def configure(self):     
         """
@@ -94,6 +96,10 @@ class Superfish:
         
         
     def run(self):
+        """
+        Writes input, runs autofish, and loads output
+        
+        """
         
         assert self.configured, 'not configured to run'
         
@@ -103,7 +109,6 @@ class Superfish:
         self.run_cmd('autofish', self.automesh_name)    
         dt = time() - t0
         self.vprint(f'Done in {dt:10.2f} seconds')
-        
         
         self.load_output()
       
@@ -139,11 +144,14 @@ class Superfish:
     
     def windows_run_cmd(self, *args):
         
-        exe = os.path.join(self._windows_exe_path, args[0].upper()+'.EXE')
+        cmd = os.path.join(self._windows_exe_path, args[0].upper()+'.EXE')
         
+        assert os.path.exists(cmd), f'EXE does not exist: {cmd}'
         
-        
-        return 
+        if len(args) > 1:
+            cmd = cmd +' '+' '.join(args[1:])
+       
+        return cmd
     
     
         
@@ -164,8 +172,13 @@ class Superfish:
     
         logfile = os.path.join(self.path, 'output.log')
     
-        with open(logfile, "a") as output:
-            P = subprocess.call(cmds, shell=True, stdout=output, stderr=output)    
+        if self.use_container:
+            with open(logfile, "a") as output:
+                P = subprocess.call(cmds, shell=True, stdout=output, stderr=output, **kwargs)    
+        else:
+            # Windows needs this
+            P = subprocess.run(cmds.split(), cwd=self.path, **kwargs)
+            
         return P
     
         ## Actual run
@@ -199,6 +212,10 @@ class Superfish:
         
         sfofile = os.path.join(self.path, self.basename+'.SFO')
         
+        if not os.path.exists(sfofile):
+            self.vprint('Warking: no SFO file to load.')
+            return
+        
         self.output['sfo'] = parsers.parse_sfo(sfofile)
         
         self.vprint('Parsed output:', sfofile)
@@ -224,5 +241,14 @@ class Superfish:
     def vprint(self, *args):
         """verbose print"""
         if self.verbose:
-            print(*args)        
+            print(*args)   
+            
+            
+    def __repr__(self):
+        memloc = hex(id(self))
+        if self.configured:
+            return f'<Superfish configured to run in {self.path}>' 
+        
+        return f'<Superfish at {memloc}>'        
+        
             
