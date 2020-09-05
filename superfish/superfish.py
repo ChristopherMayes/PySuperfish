@@ -2,6 +2,7 @@ from . import parsers
 from .plot import plot_wall
 
 import os
+import platform
 import subprocess
 import tempfile
 from time import time
@@ -11,36 +12,50 @@ from time import time
 
 
 class Superfish:
+    
+    # Class attributes for the container
+    _container_image = 'hhslepicka/poisson-superfish:latest'
+    _container_command = 'docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}'
+    _windows_exe_path= 'C:\\LANL\\',  # Windows only'
+    
+
+        
 
     def __init__(self,
-                automesh='test.am',
+                automesh=None,
                 use_tempdir=True,
-                workdir=None,
-                exe_path='C:\\LANL\\',
+                use_container='auto',
+                interactive=False,
+                workdir=None,  
                 verbose=True):
         """
         Poisson-Superfish object
         
         
         """
-        
-    
-        self.load_input( automesh)
-        
-        if os.path.exists(exe_path):
-            self.exe_path = exe_path
-        else:
-            self.exe_path = None
-            self.vprint('Warning: exe_path does not exist:', exe_path)
-        
-        
-        self.verbose=verbose       
+         
+        self.verbose=verbose      
         self.use_tempdir = use_tempdir
-        
+        self.interactive=interactive
         if workdir:
-            workdir = tools.full_path(workdir)
-            assert os.path.exists(workdir), 'workdir does not exist: '+workdir   
-        self.workdir = workdir  
+            workdir = os.path.abspath(workdir)
+            assert os.path.exists(workdir), f'workdir does not exist: {workdir}'           
+        self.workdir=workdir
+            
+        if automesh:
+            self.load_input(automesh)
+            self.configure()
+
+        if use_container == 'auto':
+            if platform.system() == 'Windows' and os.path.exists(self._windows_exe_path):
+                use_container = False
+            else:
+                use_container = True
+            
+        else:
+            self.use_container = use_container
+            
+      
         
         
     @property
@@ -84,27 +99,55 @@ class Superfish:
         
         self.write_input()
         
-        exe = os.path.join(self.exe_path, 'AUTOFISH.EXE') 
-        
-        assert os.path.exists(exe)
-        
-        cmd = [exe, self.automesh_name]
-        
         t0 = time()
-        
-        self.vprint('Running', ' '.join(cmd), f'in {self.path}')
-
-        self.run_cmd(cmd)
-        
+        self.run_cmd('autofish', self.automesh_name)    
         dt = time() - t0
         self.vprint(f'Done in {dt:10.2f} seconds')
         
         
         self.load_output()
+      
+        
+    def container_run_cmd(self, *args):
+        """
+        Returns the run command string for the container.
+        
+        The container data should live in its /data/ folder.
+        
+        """
+        
+        cmds = ' '.join(args)
+        
+       
+        if self.interactive:
+            assert platform.system() == 'Darwin', 'TODO interactive non-Darwin'
+            cmd0 = "IP=$(ifconfig en0 | grep inet | awk '$1==\"inet\" {print $2}');xhost + $IP;"
+            interactive_flags = "-e INTERACTIVE_FISH=1 -e DISPLAY=$IP:0"
+        else:
+            cmd0 = ''
+            interactive_flags = ''
+
+            
+        cmd = self._container_command.format(local_path=self.path,
+                                            image=self._container_image,
+                                            interactive_flags=interactive_flags,
+                                             cmds=cmds)
+        
+
+        
+        return cmd0+cmd
+    
+    def windows_run_cmd(self, *args):
+        
+        exe = os.path.join(self._windows_exe_path, args[0].upper()+'.EXE')
         
         
         
-    def run_cmd(self, cmds, **kwargs):
+        return 
+    
+    
+        
+    def run_cmd(self, *cmds, **kwargs):
         """
         Runs a command in in self.
         
@@ -112,10 +155,25 @@ class Superfish:
             .run_cmd(['C:\LANL\AUTOMESH.EXE', 'TEST.AM'], timeout=1)
         
         """
-    
-        P = subprocess.run(cmds, cwd=self.path, **kwargs)
+        if platform.system() == 'Windows':
+            cmds = self.windows_run_cmd(*cmds)
+        else:
+            cmds = self.container_run_cmd(*cmds)
         
+        self.vprint(f'Running: {cmds}')
+    
+        logfile = os.path.join(self.path, 'output.log')
+    
+        with open(logfile, "a") as output:
+            P = subprocess.call(cmds, shell=True, stdout=output, stderr=output)    
         return P
+    
+        ## Actual run
+        #P = subprocess.run(cmds, shell=True, cwd=self.path, **kwargs)
+        #
+        #print(P)
+        #
+        #return P
 
     
     def load_input(self, input_filePath):
