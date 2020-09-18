@@ -6,20 +6,22 @@ import platform
 import subprocess
 import tempfile
 from time import time
-
-
-
+import shutil
 
 
 class Superfish:
     
     # Class attributes for the container
     _container_image = 'hhslepicka/poisson-superfish:latest'
-    _container_command = 'docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}'
     _windows_exe_path= 'C:\\LANL\\'  # Windows only'
-    
 
-        
+    # Automatically detect the container method
+    if shutil.which('docker'):
+        _container_command='docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}'    
+    if shutil.which('shifter'):
+         _container_command='shifter --image={image} {cmds}'
+    else:
+        _container_command=None    
 
     def __init__(self,
                 automesh=None,
@@ -52,7 +54,8 @@ class Superfish:
                 self.vprint(f'Using executables installed in {self._windows_exe_path}')
                 
             else:
-                self.vprint('Using container on Windows')
+                self.vprint(f'Using container on {platform.system()}:')
+                self.vprint('    ', self._container_command)
                 self.use_container = True
             
         else:
@@ -173,8 +176,15 @@ class Superfish:
         logfile = os.path.join(self.path, 'output.log')
     
         if self.use_container:
+            
+            # Shifter doesn't need volume mounting
+            if self._container_command.startswith('shifter'):
+                cwd=self.path
+            else:
+                cwd=None
+           
             with open(logfile, "a") as output:
-                P = subprocess.call(cmds, shell=True, stdout=output, stderr=output, **kwargs)    
+                P = subprocess.call(cmds, shell=True, stdout=output, stderr=output, cwd=cwd, **kwargs)    
         else:
             # Windows needs this
             P = subprocess.run(cmds.split(), cwd=self.path, **kwargs)
