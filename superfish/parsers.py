@@ -38,6 +38,7 @@ def parse_sfo(filename, verbose=False):
     # update Kinetic energy in 'summary' with the right value
     if 'summary' in d and 'BeamEnergy' in d:
         d['summary']['data']['kinetic_energy'] = d['BeamEnergy']['data']['BeamEnergy']/1e6
+        d['summary']['units']['kinetic_energy'] = 'MeV'
 
     return d
 
