@@ -19,7 +19,8 @@ class Superfish:
     if shutil.which('docker'):
         _container_command='docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}'    
     if shutil.which('shifter'):
-         _container_command='shifter --image={image} {cmds}'
+        _container_command='shifter --image={image} {cmds}'
+        #_container_command='shifter {cmds}'
     else:
         _container_command=None    
 
