@@ -30,10 +30,14 @@ def parse_sfo(filename, verbose=False):
 
         if type == 'wall_segment':
             d['wall_segments'].append(dat)
-        elif type in ['summary']:
+        elif type in ['summary','BeamEnergy']:
             d[type] = dat
         else:
             d['other'][type] = dat
+            
+    # update Kinetic energy in 'summary' with the right value
+    if 'summary' in d and 'BeamEnergy' in d:
+        d['summary']['data']['kinetic_energy'] = d['BeamEnergy']['data']['BeamEnergy']/1e6
 
     return d
 
@@ -96,7 +100,9 @@ def process_group(group, verbose=False):
         line1 = rtype # This should be parsed fully
 
         d.update(parse_sfo_segment([line1]+lines))
-
+    elif rtype.startswith('The field normalization factor ASCALE for this problem is based'):
+        d['type'] = 'BeamEnergy'
+        d['data'], d['units'] = parse_sfo_beam_energy(lines)
 
     else:
         # No parser yet:
@@ -194,7 +200,21 @@ def parse_sfo_segment(lines):
 #_________________________________
 # Summary
 
-
+def parse_sfo_beam_energy(lines):
+    d_vals = {}
+    d_units = {}
+    for line in lines:
+        line = line.strip()
+        if line.startswith('V0'):
+            line = line.split('=')[-1]
+            line = line.strip()
+            line = line.split(' ')
+            data = line[0]
+            data = float(data)
+            unit = line[1]
+    d_vals['BeamEnergy'] = data
+    d_units['BeamEnergy'] = unit
+    return d_vals, d_units
 
 
 def parse_sfo_summary_group(lines):
