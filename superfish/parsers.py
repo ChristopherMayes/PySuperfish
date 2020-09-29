@@ -32,6 +32,9 @@ def parse_sfo(filename, verbose=False):
             d['wall_segments'].append(dat)
         elif type in ['summary','BeamEnergy']:
             d[type] = dat
+        elif type == 'header':
+            d['header'] = parse_header_lines(dat['lines'])
+        
         else:
             d['other'][type] = dat
             
@@ -116,10 +119,136 @@ def process_group(group, verbose=False):
     return d
 
 
+
+#_________________________________
+# T7 files
+
+def parse_t7(t7file, labels=['Ez', 'Er', 'E', 'Hphi']):
+    """
+    Parses a T7 file. The T7 header should have:
+    
+    xmin(cm), xmax(cm), nx-1
+    freq(MHz)
+    ymin(cm), ymax(cm), ny-1
+    4 columns of data: Ez, Er, E, Hphi
+    
+    TODO: Poisson problems, detect rectangular or cylindrical coordinates
+    
+    Returns a dict with:
+        xmin
+        xmax
+        nx
+        ymin
+        ymax
+        ny
+        freq: frequency in MHz
+        data: 2D array of shape (nx, ny)    
+    
+    
+    """
+    
+    # Read header
+    # xmin(cm), xmax(cm), nx-1
+    # freq(MHz)
+    # ymin(cm), ymax(cm), ny-1
+    with open(t7file, 'r') as f:
+        line1 = f.readline().split()
+        freq_MHz = float(f.readline())
+        line3 = f.readline().split()
+    
+    # Form output dict 
+    d = {}
+    d['xmin'], d['xmax'], d['nx'] =  float(line1[0]), float(line1[1]), int(line1[2])+1
+    d['freq'] = freq_MHz
+    d['ymin'], d['ymax'], d['ny'] =  float(line3[0]), float(line3[1]), int(line3[2])+1
+    
+    
+
+    # Read and reshape
+    dat4 = np.loadtxt(t7file, skiprows=3)
+    ncol = len(labels)
+    dat4 = dat4.reshape(d['ny'], d['nx'], ncol)
+    
+    for i, label in enumerate(labels):
+        d[label] = dat4[:,:,i]
+    
+    
+    return d
+
+
 #_________________________________
 #_________________________________
 # Individual parsers
 
+
+
+#_________________________________
+# Header
+
+def parse_header_variable(line):
+    """
+    Parses a line that follows:
+    
+    Variable Code         Value     Description
+    
+    Returns:
+        key, value, description, in_automesh
+    
+    """
+    x = line.split()
+    
+    key = x[0]
+    
+    if x[1] == 'A':
+        in_automesh = True
+        
+        s = x[2]
+        d = x[3:]
+    else:
+        in_automesh = False
+        s = x[1]
+        d = x[2:]
+        
+    descrip = ' '.join(d)
+        
+    try: 
+        val = int(s)
+    except ValueError:
+        val = float(s)
+    
+    return key, val, descrip, in_automesh
+
+
+def parse_header_lines(lines):
+    """
+    Parses the header lines
+    """
+    
+    
+    header = 'Variable Code         Value     Description'
+    
+    d = {}
+    description = {}
+    in_automesh = {}
+    
+    comments = []
+    
+    in_header=False
+    for line in lines:
+        if line == header:
+            in_header = True
+            continue
+        if not in_header:
+            comments.append(line)
+            continue
+        
+        key, val, descrip, in_am = parse_header_variable(line)
+        
+        d[key] = val
+        description[key] = descrip
+        in_automesh[key] = in_am
+        
+    return {'variable':d, 'description':description, 'in_automesh':in_automesh, 'comments':'\n'.join(comments)}
 
 
 #_________________________________
