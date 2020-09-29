@@ -1,3 +1,5 @@
+import numpy as np
+
 def fish_externalfield_data(t7data,
                       eleAnchorPt = 'beginning',
                       fieldScale = 1,
@@ -71,4 +73,3 @@ def fish_externalfield_data(t7data,
     
     
     
-    return attrs, components
