@@ -1,5 +1,6 @@
 from . import parsers
 from .plot import plot_wall
+from .interpolate import interpolate2d
 
 import os
 import platform
@@ -96,6 +97,22 @@ class Superfish:
         self.vprint('Configured to run in:', self.path)
         
         self.configured = True  
+        
+        
+    def interpolate(self,
+                  xmin=-1000, xmax=1000, nx=100,
+                  ymin=0, ymax=0, ny=1,
+                  labels=['Ez', 'Er', 'E', 'Hphi']):
+        """
+        Interpolates field over a grid. 
+        """
+    
+        t7data = interpolate2d(self,
+                  xmin=xmin, xmax=xmax, nx=nx,
+                  ymin=ymin, ymax=ymax, ny=ny,
+                  labels=labels)
+        
+        return t7data
         
         
         

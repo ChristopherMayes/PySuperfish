@@ -1,9 +1,34 @@
 import matplotlib.pyplot as plt
 import matplotlib
+from copy import copy
+
+# Get a default color map
+CMAP0 = copy(plt.get_cmap('plasma'))
+CMAP0.set_under('white')
 
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import numpy as np
+
+
+def add_t7data_to_axes(t7data, ax, field='E', cmap=None):
+    """
+    Adds a field from t7data to an axes ax. 
+    
+    """
+    
+    
+    extent = [t7data[k] for k in ('xmin', 'xmax', 'ymin', 'ymax')]
+
+    
+    if not cmap:
+        cmap = CMAP0
+    
+    ax.imshow(np.flipud(t7data[field]), extent=extent, cmap=cmap, vmin=1e-19)
+    
+    return ax
+
+
 
 
 def perp(x, y, scale=1):
@@ -56,7 +81,14 @@ def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap
     px, py = perp(x, y, scale=scales)
     
     ax.plot(x, y, color='black')
+    
+    
+    
+    
     if perp_scale:
+        
+        if not cmap:
+            cmap = CMAP0    
         
         color = cmap(F[:-1])   
 
