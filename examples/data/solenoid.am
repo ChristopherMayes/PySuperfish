@@ -1,0 +1,94 @@
+Superconducting solenoid magnet for UW SRF gun
+
+&reg	kprob=0		! Poisson / Pandira problem
+	icylin=1	! cylindrical symmetry
+	dx=0.1		! basic mesh spacing
+	mode=0		! internal permeability tables
+&
+
+! define the problem box
+&po x=   0.,y= -20. &
+&po x=  31.,y= -20. &
+&po x=  31.,y=  30. &
+&po x=   0.,y=  30. &
+&po x=   0.,y= -20. &
+
+
+!Superconducting solenoid magnet for SRF gun - v3
+! define the flux clamp - use decarburized iron (mtid=-1) or 1010 steel (mtid=0)
+&reg mat=2, mtid=-1 & 
+&po y= 4.6, x=7.0  &
+&po y= 4.6,x=2.6  &
+&po y= 3.4,x=2.6  &
+&po y= 3.4,x=2.8  &
+&po y= 3.0,x=2.8  &
+&po y= 3.0,x=4.8  &
+
+&po y= -3.0,x=4.8  &
+&po y= -3.0,x=2.8  &
+&po y= -3.4,x=2.8  &
+&po y= -3.4,x=2.6  &
+&po y= -4.6,x=2.6  &
+&po y= -4.6, x=7.0  &
+&po y= 4.6, x=7.0  &
+
+!! define the SC solenoid coil pack
+
+&reg mat=1,cur=2000.0 & 
+&po y= 2.6 ,   x=3.2  &
+&po y= 2.6,   x=3.7  &
+&po y= 1.7,   x=3.7  &
+&po y= 1.7,   x=3.2  &
+&po y= 2.6 ,   x=3.2  &
+
+&reg mat=1,cur=2000.0 & 
+&po y= 1.5 ,   x=3.0  &
+&po y= 1.5,   x=3.5  &
+&po y= 0.6,   x=3.5  &
+&po y= 0.6,   x=3.0  &
+&po y= 1.5 ,   x=3.0  &
+
+&reg mat=1,cur=2000.0 & 
+&po y= 0.45 ,   x=3.0  &
+&po y= 0.45,   x=3.5  &
+&po y= -0.45,   x=3.5  &
+&po y= -0.45,   x=3.0  &
+&po y= 0.45 ,   x=3.0  &
+
+&reg mat=1,cur=2000.0 & 
+&po y= -2.6 ,   x=3.2  &
+&po y= -2.6,   x=3.7  &
+&po y= -1.7,   x=3.7  &
+&po y= -1.7,   x=3.2  &
+&po y= -2.6 ,   x=3.2  &
+
+
+&reg mat=1,cur=2000.0 & 
+&po y= -1.5 ,   x=3.0  &
+&po y= -1.5,   x=3.5  &
+&po y= -0.6,   x=3.5  &
+&po y= -0.6,   x=3.0  &
+&po y= -1.5 ,   x=3.0  &
+
+! define SRF cavity & beam pipe
+&reg mat= 3, mtid= 3, mshape= 0& 
+&po x = 30,     y= 30.  &
+&po x = 30,     y= 18.5  &
+&po nt = 2, x0 = 3.0, y0 = 18.5, A = 27.0, B=8.5, X=0, Y=-8.5 &
+&PO nt=4, radius=1, X= 2.0, Y=9 &
+&po x=  2.0,    y= 8.3 &
+&po x=  2.5,    y= 8.3 &
+&po x=  2.5,    y= 9 &
+&PO nt= 2, x0 = 3.0, y0 = 9, A=0.5, B=0.5, X=0, Y=0.5 &
+&po nt = 2, x0 = 3.0, y0 = 18.5, A = 27.5, B=9, X = 27.5, Y=0 &
+&po x = 30.5, y = 30 &
+&po x = 30, y = 30 &
+
+&MT mtid = 3,
+BGAM=0.00000E+00 1e10
+1.0 1e10
+&
+
+
+
+!=================================================
