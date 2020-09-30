@@ -50,39 +50,52 @@ def parse_sfo(filename, verbose=False):
 
 def parse_sfo_into_groups(filename):
     """
-    Parses SFO file into groups according to separator:
-    '-------------------------------------------------------------------------------'
+    Parses SFO file into groups according to separator that starts with:
+    '-------------------'
 
     Returns a list of dicts, with:
         raw_type: the first line
         lines: list of lines
 
     """
+
+        
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+    
     groups = []
 
+    sep = '-------------------'
+    
+    
+    g = {'raw_type':'header', 'lines':[]}
+    groups = [g]
+    
+    new_group = False
+    
+    for line in lines:
+        line = line.strip()
+        
+        # Skip empty lines
+        if not line:
+            continue
+            
+        # Look for new group    
+        if line.startswith(sep):
+            new_group = True
+            continue
+        
+        # Check for new group
+        if new_group:
+            gname = line
+            new_group = False
+            g = {'raw_type': gname, 'lines':[]}
+            groups.append(g)
+            continue
+            
+        # regular line
+        g['lines'].append(line)
 
-
-    sep = '-------------------------------------------------------------------------------'
-
-    with open(filename, 'r') as f:
-        line = f.readline()
-        g = {'raw_type':'header', 'lines':[line]}
-        groups = [g]
-        while line:
-            line = line.strip()
-            if line == sep:
-                # New group in next line, skipping empty
-                gname = f.readline().strip()
-                while not gname:
-                    gname = f.readline().strip()
-
-                g = {'raw_type': gname, 'lines':[]}
-                groups.append(g)
-            else:
-                # regular line
-                g['lines'].append(line)
-
-            line = f.readline()
     return groups
 
 
@@ -99,7 +112,7 @@ def process_group(group, verbose=False):
     if rtype.startswith('All calculated values below refer to the mesh geometry only'):
         d['type'] = 'summary'
         d['data'], d['units'] = parse_sfo_summary_group(lines)
-    elif rtype.startswith('Power and fields on wall segment'):
+    elif rtype.startswith('Power and fields on wall segment') or rtype.startswith('Fields on segment'):
         d['type'] = 'wall_segment'
         line1 = rtype # This should be parsed fully
 
@@ -281,48 +294,59 @@ def parse_sfo_segment(lines):
     # key = value lines
 
     info = parse_wall_segment_line1(lines[0])
-
-    M = "                      (cm)          (cm)         (A/m)       (V/m)"
+    
     inside = False
-
-    dats = []
+    fields = None
+    units = None
 
     for L in lines[1:]:
+
         L = L.strip()
 
         # Look for key=value
         if '=' in L:
             key, val = L.split('=')
-            info[key] = val
+            info[key.strip()] = val
             continue
 
-        if L == M.strip():
+        if L.startswith("K    L"):                
+            nskip = 2
+            fields = {name.strip('|'):[] for name in L.split()[nskip:]}
+            continue
+        elif L.startswith( "m     K     L"):
+            nskip = 3
+            fields = {name.strip('|'):[] for name in L.split()[nskip:]}            
+            continue
+
+        if not fields:
+            continue        
+    
+        # Look for units
+        if fields and not units:
+            units = L.split()
+            assert len(units) == len(fields), print(units)
             inside = True
-            dat = {'Z':[], 'R':[], 'H':[], 'E':[]}
-            dats.append(dat)
-            continue
-        if not inside:
             continue
 
-        x = L.split()
-        if len(x) == 7:
-            x = x[3:]
+        # This might come at the end
+        if L.startswith('Summary'):
+            inside = False
+            
+            
+        # Must be inside. Add data            
+        if inside:
+            x = [float(y) for y in L.split()]
+            # Special care if there are blanks for the skip columns 
+            if len(x) == len(fields) + nskip:
+                x =  x[nskip:]
+            for i, name in enumerate(fields):
+                fields[name].append(x[i])
 
-        if len(x) == 4:
-            dat['Z'].append(float(x[0]))
-            dat['R'].append(float(x[1]))
-            dat['H'].append(float(x[2]))
-            dat['E'].append(float(x[3]))
-        else:
-            # Exiting
-            for k, v in dat.items():
-                dat[k] = np.array(v)
-
-            inside=False
-
-    assert len(dats)==1, 'multiple blocks found'
-
-    return {'wall':dats[0], 'info':info}
+    # Exiting
+    for k, v in fields.items():
+        fields[k] = np.array(v)            
+    
+    return {'wall':fields, 'info':info, 'units':units}
 
 
 

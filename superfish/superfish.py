@@ -19,7 +19,7 @@ class Superfish:
     # Automatically detect the container method
     if shutil.which('docker'):
         _container_command='docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}'    
-    if shutil.which('shifter'):
+    elif shutil.which('shifter'):
         _container_command='shifter --image={image} {cmds}'
         #_container_command='shifter {cmds}'
     else:
@@ -27,10 +27,12 @@ class Superfish:
 
     def __init__(self,
                 automesh=None,
+                problem='fish',
                 use_tempdir=True,
                 use_container='auto',
                 interactive=False,
                 workdir=None,  
+                 
                 verbose=True):
         """
         Poisson-Superfish object
@@ -38,6 +40,8 @@ class Superfish:
         
         """
          
+        self.problem = problem
+            
         self.verbose=verbose      
         self.use_tempdir = use_tempdir
         self.interactive=interactive
@@ -127,7 +131,16 @@ class Superfish:
         self.write_input()
         
         t0 = time()
-        self.run_cmd('autofish', self.automesh_name)    
+        
+        if self.problem == 'fish':
+        
+            self.run_cmd('autofish', self.automesh_name)    
+        else:
+            self.run_cmd('automesh', self.automesh_name) 
+            return
+         #   self.run_cmd('poisson')    
+         #   self.run_cmd('sfo')    
+           
         dt = time() - t0
         self.vprint(f'Done in {dt:10.2f} seconds')
         
