@@ -1,4 +1,4 @@
-from superfish.parsers import parse_t7
+from superfish.parsers import parse_fish_t7, parse_poisson_t7
 
 import numpy as np
 
@@ -14,9 +14,8 @@ def get_t7(path):
 
 
 def interpolate2d(sf,
-                  xmin=-1000, xmax=1000, nx=100,
-                  ymin=0, ymax=0, ny=1,
-                  labels=['Ez', 'Er', 'E', 'Hphi']):
+                  zmin=-1000, zmax=1000, nz=100,
+                  rmin=0, rmax=0, nr=1):
     """
     
     Runs SF7.EXE on a Superfish object sf, requesting interpolating data, and reads the Parmela T7 file. 
@@ -42,11 +41,25 @@ def interpolate2d(sf,
     
     """
     
+    problem = sf.problem 
+    
+    # fish and poisson have the opposite conventions:
+    if problem == 'fish':
     # The interpolation grid
-    F=f"""Parmela
-{xmin} {ymin} {xmax} {ymax}
-{nx-1} {ny-1}
+        F=f"""Parmela
+{zmin} {rmin} {zmax} {rmax}
+{nz-1} {nr-1}
 End"""
+        
+    elif problem == 'poisson':
+        F=f"""Parmela
+{rmin} {zmin} {rmax} {zmax}
+{nr-1} {nz-1}
+End"""
+    else:
+        raise ValueError(f'unknowm problem: {problem}')
+    
+
     # Clear old T7
     for f in get_t7(sf.path):
         os.remove(f)
@@ -64,6 +77,14 @@ End"""
     assert len(t7file) == 1
     t7file = t7file[0]
     
-    d =  parse_t7(t7file, labels=labels)
+    # Parsing is different for each:
+    if problem == 'fish':
+        d =  parse_fish_t7(t7file)
+    else:
+        if sf.output['sfo']['header']['variable']['XJFACT'] == 0:
+            type = 'electric'
+        else:
+            type = 'magnetic'
+        d =  parse_poisson_t7(t7file, type=type)
     
     return d

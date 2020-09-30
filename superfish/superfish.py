@@ -104,17 +104,15 @@ class Superfish:
         
         
     def interpolate(self,
-                  xmin=-1000, xmax=1000, nx=100,
-                  ymin=0, ymax=0, ny=1,
-                  labels=['Ez', 'Er', 'E', 'Hphi']):
+                  zmin=-1000, zmax=1000, nz=100,
+                  rmin=0, rmax=0, nr=1):
         """
         Interpolates field over a grid. 
         """
     
         t7data = interpolate2d(self,
-                  xmin=xmin, xmax=xmax, nx=nx,
-                  ymin=ymin, ymax=ymax, ny=ny,
-                  labels=labels)
+                  zmin=zmin, zmax=zmax, nz=nz,
+                  rmin=rmin, rmax=rmax, nr=nr)
         
         return t7data
         
@@ -133,13 +131,11 @@ class Superfish:
         t0 = time()
         
         if self.problem == 'fish':
-        
             self.run_cmd('autofish', self.automesh_name)    
         else:
             self.run_cmd('automesh', self.automesh_name) 
-            return
-         #   self.run_cmd('poisson')    
-         #   self.run_cmd('sfo')    
+            self.run_cmd('poisson')    
+            self.run_cmd('sfo')    
            
         dt = time() - t0
         self.vprint(f'Done in {dt:10.2f} seconds')

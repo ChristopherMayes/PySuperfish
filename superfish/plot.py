@@ -11,20 +11,26 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 
 
-def add_t7data_to_axes(t7data, ax, field='E', cmap=None):
+def add_t7data_to_axes(t7data, ax, field='E', cmap=None, vmin=1e-19):
     """
     Adds a field from t7data to an axes ax. 
     
     """
     
     
-    extent = [t7data[k] for k in ('xmin', 'xmax', 'ymin', 'ymax')]
+    extent = [t7data[k] for k in ('zmin', 'zmax', 'rmin', 'rmax')]
 
     
     if not cmap:
         cmap = CMAP0
+        
+    if field in ('E', 'B') and field not in t7data:
+        data = np.hypot(t7data[field+'r'], t7data[field+'z'])
+    else:
+        data = t7data[field]
+        
     
-    ax.imshow(np.flipud(t7data[field]), extent=extent, cmap=cmap, vmin=1e-19)
+    ax.imshow(np.flipud(data), extent=extent, cmap=cmap, vmin=vmin )
     
     return ax
 
@@ -74,18 +80,19 @@ def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap
     
     x = seg['wall']['Z']
     y = seg['wall']['R']
-    F = seg['wall'][field]/max_field # field, E or B
-    
-    scales = perp_scale*F[:-1]
-    
-    px, py = perp(x, y, scale=scales)
-    
+
+    # Wall segment
     ax.plot(x, y, color='black')
-    
-    
-    
-    
+        
     if perp_scale:
+        
+        # Fetch the field
+        F = seg['wall'][field]/max_field # field, E or B
+    
+        scales = perp_scale*F[:-1]
+    
+        px, py = perp(x, y, scale=scales)
+        
         
         if not cmap:
             cmap = CMAP0    
@@ -123,8 +130,10 @@ def plot_wall(wall_segments,
     if not cmap:
         cmap = plt.get_cmap('plasma')    
     
-    if not max_field:
+    if perp_scale and not max_field:
         max_field = np.array([seg['wall'][field].max() for seg in wall_segments]).max()
+    else:
+        max_field = 0
     
     for seg in wall_segments:
         add_wall_segment_to_axes(seg, ax, perp_scale=perp_scale,
@@ -141,12 +150,19 @@ def plot_wall(wall_segments,
 
     
     # Legend
+    
+    
+    
     if field=='E':
         sc = 1e-6
         unit = 'MV/m'
     elif field == 'H':
         sc = 1
         unit = 'A/m'
+    elif field=='B':
+        sc = 1e-4
+        unit = 'T'        
+        
     
     # Add legend
     norm = matplotlib.colors.Normalize(vmin=0, vmax=max_field*sc)

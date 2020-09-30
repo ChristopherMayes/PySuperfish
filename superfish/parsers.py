@@ -136,7 +136,7 @@ def process_group(group, verbose=False):
 #_________________________________
 # T7 files
 
-def parse_t7(t7file, labels=['Ez', 'Er', 'E', 'Hphi']):
+def parse_fish_t7(t7file, geometry='cylindrical'):
     """
     Parses a T7 file. The T7 header should have:
     
@@ -148,14 +148,14 @@ def parse_t7(t7file, labels=['Ez', 'Er', 'E', 'Hphi']):
     TODO: Poisson problems, detect rectangular or cylindrical coordinates
     
     Returns a dict with:
-        xmin
-        xmax
-        nx
-        ymin
-        ymax
-        ny
+        rmin
+        rmax
+        nr
+        zmin
+        zmax
+        nz
         freq: frequency in MHz
-        data: 2D array of shape (nx, ny)    
+        data: 2D array of shape (nr, nz)    
     
     
     """
@@ -171,22 +171,74 @@ def parse_t7(t7file, labels=['Ez', 'Er', 'E', 'Hphi']):
     
     # Form output dict 
     d = {}
-    d['xmin'], d['xmax'], d['nx'] =  float(line1[0]), float(line1[1]), int(line1[2])+1
+    d['zmin'], d['zmax'], d['nz'] =  float(line1[0]), float(line1[1]), int(line1[2])+1
     d['freq'] = freq_MHz
-    d['ymin'], d['ymax'], d['ny'] =  float(line3[0]), float(line3[1]), int(line3[2])+1
+    d['rmin'], d['rmax'], d['nr'] =  float(line3[0]), float(line3[1]), int(line3[2])+1
     
+    # These should be the labels
+    labels=['Ez', 'Er', 'E', 'Hphi']
     
-
     # Read and reshape
     dat4 = np.loadtxt(t7file, skiprows=3)
     ncol = len(labels)
-    dat4 = dat4.reshape(d['ny'], d['nx'], ncol)
+    dat4 = dat4.reshape(d['nr'], d['nz'], ncol)
+    
     
     for i, label in enumerate(labels):
         d[label] = dat4[:,:,i]
     
     
     return d
+
+def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
+    """
+    Parses a T7 file. The T7 header should have:
+    
+    xmin(cm), xmax(cm), nx-1
+    ymin(cm), ymax(cm), ny-1
+    2 columns of data: Bz, Br
+    
+    Returns a dict with:
+        rmin
+        rmax
+        nr
+        ymin
+        ymax
+        ny
+        data: 2D array of shape (nx, ny)    
+    
+    
+    """
+    assert geometry == 'cylindrical', 'TODO: other geometries'
+
+    if type == 'electric':
+        labels = 'Er', 'Ez'
+    elif type == 'magnetic':
+        labels = 'Br', 'Bz'
+        
+    # Read header
+    # xmin(cm), xmax(cm), nx-1    # r in cylindrical geometry
+    # ymin(cm), ymax(cm), ny-1    # z in cylindrical geometry
+    with open(t7file, 'r') as f:
+        xline = f.readline().split()
+        yline = f.readline().split()
+
+    # Form output dict 
+    d = {}
+    d['rmin'], d['rmax'], d['nr'] =  float(xline[0]), float(xline[1]), int(xline[2])+1
+    d['zmin'], d['zmax'], d['nz'] =  float(yline[0]), float(yline[1]), int(yline[2])+1
+    
+    # Read and reshape
+    dat4 = np.loadtxt(t7file, skiprows=2)
+    ncol = len(labels)
+    dat4 = dat4.reshape(d['nz'], d['nr'], ncol)
+    
+    for i, label in enumerate(labels):
+        d[label] = dat4[:,:,i].T
+    
+    
+    return d
+
 
 
 #_________________________________
