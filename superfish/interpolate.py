@@ -20,7 +20,7 @@ def interpolate2d(sf,
     
     Runs SF7.EXE on a Superfish object sf, requesting interpolating data, and reads the Parmela T7 file. 
     
-    Dimensions are in cm.
+    Units are in the input units of the program. 
     
     Labels will label the output columns. The user must know what these are from the problem.
     
@@ -29,14 +29,14 @@ def interpolate2d(sf,
     SF7 automatically adjusts the bounds if they are requested outside of the computational domain.
     
     Returns a dict with:
-        xmin
-        xmax
-        nx
-        ymin
-        ymax
-        ny
+        rmin: minimum radius in cm
+        rmax: maximum radius in cm
+        nr:   number of radius points
+        zmin: minimum z in cm
+        zmax: maximum z in cm
+        nz:   number of z points
         freq: frequency in MHz
-        data: 2D array of shape (nx, ny)
+        data: 2D array of shape (nr, nz)
     
     
     """
@@ -68,6 +68,12 @@ End"""
     ifile = sf.basename+'.IN7'
     with open(os.path.join(sf.path, ifile), 'w') as f:
         f.write(F)
+    
+    # Needed so that the fields aren't normalized to 1 MV/m average
+    inifile = os.path.join(sf.path, 'SF.INI')
+    with open(inifile, 'w') as f:
+        f.write("""[global]
+Force1MVperMeter=No""")
     
     # Run
     sf.run_cmd('sf7', ifile)

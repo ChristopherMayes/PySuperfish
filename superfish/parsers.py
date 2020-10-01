@@ -196,7 +196,14 @@ def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
     
     xmin(cm), xmax(cm), nx-1
     ymin(cm), ymax(cm), ny-1
-    2 columns of data: Bz, Br
+    
+    For type=='electric':
+        2 columns of data: Ez, Er
+        Units are in V/cm
+    
+    For type=='magnetic':
+        2 columns of data: Bz, Br
+        Units are G
     
     Returns a dict with:
         rmin
@@ -375,8 +382,10 @@ def parse_sfo_segment(lines):
     
         # Look for units
         if fields and not units:
-            units = L.split()
-            assert len(units) == len(fields), print(units)
+            unit_labels = L.split()
+            assert len(unit_labels) == len(fields), print(unit_labels)
+            # make dict
+            units = dict(zip(list(fields),unit_labels))
             inside = True
             continue
 

@@ -11,15 +11,17 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 
 
-def add_t7data_to_axes(t7data, ax, field='E', cmap=None, vmin=1e-19):
+def add_t7data_to_axes(t7data, ax, field='E', cmap=None, vmin=1e-19, scale=1):
     """
     Adds a field from t7data to an axes ax. 
     
+    scale will scale the extents, to account for different units.
+    Example: scale=10 will place this data in cm on a plot in mm
+    
     """
-    
-    
-    extent = [t7data[k] for k in ('zmin', 'zmax', 'rmin', 'rmax')]
 
+    
+    extent = [t7data[k]*scale for k in ('zmin', 'zmax', 'rmin', 'rmax')]
     
     if not cmap:
         cmap = CMAP0
@@ -68,7 +70,7 @@ def perp(x, y, scale=1):
     
     return np.array([px0, px1]).T, np.array([py0, py1]).T
 
-def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap=None):
+def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap=None, conv=1):
     """
     Adds wall segments to axes. 
     
@@ -78,8 +80,8 @@ def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap
     
     """
     
-    x = seg['wall']['Z']
-    y = seg['wall']['R']
+    x = seg['wall']['Z']*conv
+    y = seg['wall']['R']*conv
 
     # Wall segment
     ax.plot(x, y, color='black')
@@ -116,6 +118,8 @@ def plot_wall(wall_segments,
     
     If perp_scale > 0, the field will be plotted
     
+    conv is the unit conversion factor used by Superfish. 
+    
     TODO: this is only for FISH problems so far
     
     """
@@ -123,9 +127,7 @@ def plot_wall(wall_segments,
     if not ax:
         fig, ax = plt.subplots( **kwargs)
     
-    ax.set_aspect('equal')
-    ax.set_xlabel('z (cm)')
-    ax.set_ylabel('r (cm)')
+
     
     if not cmap:
         cmap = plt.get_cmap('plasma')    
@@ -140,6 +142,13 @@ def plot_wall(wall_segments,
                                  field=field,
                                  max_field=max_field, cmap=cmap)
       
+    # Labels and units
+    units = wall_segments[0]['units']
+
+    ax.set_aspect('equal')
+    ax.set_xlabel('z '+units['Z'])
+    ax.set_ylabel('r '+units['R'])    
+    
     
     if perp_scale == 0:
         return
@@ -147,27 +156,24 @@ def plot_wall(wall_segments,
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     
-
+    # Legend units
+    field_unit = units[field]
     
-    # Legend
-    
-    
-    
-    if field=='E':
+    # Tweak for convenience
+    if field_unit=='(V/m)' and max_field >1e6:
         sc = 1e-6
-        unit = 'MV/m'
-    elif field == 'H':
-        sc = 1
-        unit = 'A/m'
-    elif field=='B':
+        field_unit='(MV/m)'
+    elif field_unit=='(V/cm)' and max_field >1e4:
         sc = 1e-4
-        unit = 'T'        
+        field_unit='(MV/m)'        
         
-    
+    else:
+        sc = 1
+     
     # Add legend
     norm = matplotlib.colors.Normalize(vmin=0, vmax=max_field*sc)
     fig.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap),
-             cax=cax, orientation='vertical', label=f'|{field}| max ({unit})')             
+             cax=cax, orientation='vertical', label=f'|{field}| max {field_unit}')             
     
 #plot_wall(SF.output['sfo']['wall_segments'], perp_scale=0, field='H', figsize=(20,8))                
 
