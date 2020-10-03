@@ -80,7 +80,7 @@ Force1MVperMeter=No""")
     
     # Get the filename
     t7file = get_t7(sf.path)
-    assert len(t7file) == 1
+    assert len(t7file) == 1, f'T7 file is missing.'
     t7file = t7file[0]
     
     # Parsing is different for each:

@@ -171,6 +171,8 @@ def parse_fish_t7(t7file, geometry='cylindrical'):
     
     # Form output dict 
     d = {}
+    d['geometry'] = geometry
+    d['problem'] = 'fish'        
     d['zmin'], d['zmax'], d['nz'] =  float(line1[0]), float(line1[1]), int(line1[2])+1
     d['freq'] = freq_MHz
     d['rmin'], d['rmax'], d['nr'] =  float(line3[0]), float(line3[1]), int(line3[2])+1
@@ -232,6 +234,8 @@ def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
 
     # Form output dict 
     d = {}
+    d['geometry'] = geometry
+    d['problem'] = 'poisson'        
     d['rmin'], d['rmax'], d['nr'] =  float(xline[0]), float(xline[1]), int(xline[2])+1
     d['zmin'], d['zmax'], d['nz'] =  float(yline[0]), float(yline[1]), int(yline[2])+1
     

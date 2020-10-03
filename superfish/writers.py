@@ -147,3 +147,33 @@ def poisson_externalfield_data(t7data,
     
     
     
+    
+    
+def write_fish_t7(filename, t7data,  fmt='%10.8e'):
+    """
+    Writes a T7 file from FISH t7data dict. 
+    
+    See:
+        superfish.parsers.parse_fish_t7
+    """
+    
+    # Collect these
+    xmin = t7data['zmin']
+    xmax = t7data['zmax']
+    nx   = t7data['nz']
+    ymin = t7data['rmin']
+    ymax = t7data['rmax']
+    ny   = t7data['nr']
+    freq = t7data['freq']
+    
+    
+    header = f"""{xmin} {xmax} {nx-1}
+{freq}
+{ymin} {ymax} {ny-1}"""
+    
+    # Unroll the arrays
+    dat = np.array([t7data[f].reshape(nx*ny).T for f in ['Ez', 'Er', 'E', 'Hphi']]).T
+    
+    np.savetxt(filename, dat, header=header, comments='',  fmt = fmt)
+    
+    return filename
