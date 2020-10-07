@@ -13,10 +13,24 @@ https://laacg.lanl.gov
 
 (Private)
 
+https://github.com/hhslepicka/docker-poisson-superfish
+
 ```bash
 docker pull hhslepicka/poisson-superfish:latest
 ```
 
+## Shifter (NERSC)
+
+```bash
+shifterimg --user $USER pull hhslepicka/poisson-superfish:latest
+```
+
+
+## Singularity
+
+```bash
+singularity pull --docker-login docker://hhslepicka/poisson-superfish:latest
+```
 
 ## macOS setup
 
