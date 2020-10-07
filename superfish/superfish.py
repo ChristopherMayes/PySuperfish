@@ -23,7 +23,7 @@ class Superfish:
     elif shutil.which('shifter'):
         _container_command = 'shifter --image={image} {cmds}'
     elif shutil.which('singularity'):
-        _container_command = 'singularity exec --bind {local_path}:/data/ {singularity_image} {cmds}'
+        _container_command = 'singularity exec {singularity_image} {cmds}'
     else:
         _container_command = None
 
@@ -198,10 +198,11 @@ class Superfish:
         if self.use_container:
             
             # Shifter doesn't need volume mounting
-            if self._container_command.startswith('shifter'):
-                cwd=self.path
+            if (self._container_command.startswith('shifter') or
+                    self._container_command.startswith('singularity')):
+                cwd = self.path
             else:
-                cwd=None
+                cwd = None
            
             with open(logfile, "a") as output:
                 P = subprocess.call(
