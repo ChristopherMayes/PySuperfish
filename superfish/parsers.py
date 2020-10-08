@@ -200,11 +200,11 @@ def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
     ymin(cm), ymax(cm), ny-1
     
     For type=='electric':
-        2 columns of data: Ez, Er
+        2 columns of data: Er, Ez
         Units are in V/cm
     
     For type=='magnetic':
-        2 columns of data: Bz, Br
+        2 columns of data: Br, Bz
         Units are G
     
     Returns a dict with:

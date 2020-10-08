@@ -96,6 +96,9 @@ def poisson_externalfield_data(t7data,
     """
     
     attrs = {}
+    
+    assert eleAnchorPt in ['beginning', 'center', 'end'], f'Unallowed eleAnchorPt point: {eleAnchorPt}'
+    
     attrs['eleAnchorPt'] = eleAnchorPt
     
     # Set requested zmin
@@ -145,13 +148,11 @@ def poisson_externalfield_data(t7data,
 
     return attrs, components
     
-    
-    
-    
-    
+
 def write_fish_t7(filename, t7data,  fmt='%10.8e'):
     """
     Writes a T7 file from FISH t7data dict. 
+    
     
     See:
         superfish.parsers.parse_fish_t7
@@ -171,8 +172,44 @@ def write_fish_t7(filename, t7data,  fmt='%10.8e'):
 {freq}
 {ymin} {ymax} {ny-1}"""
     
+    
     # Unroll the arrays
     dat = np.array([t7data[f].reshape(nx*ny).T for f in ['Ez', 'Er', 'E', 'Hphi']]).T
+    
+    np.savetxt(filename, dat, header=header, comments='',  fmt = fmt)
+    
+    return filename
+
+def write_poisson_t7(filename, t7data,  fmt='%10.8e'):
+    """
+    Writes a T7 file from POISSON t7data dict. 
+    
+    
+    See:
+        superfish.parsers.parse_poisson_t7
+    """
+    
+    # Collect these
+    ymin = t7data['zmin']
+    ymax = t7data['zmax']
+    ny   = t7data['nz']
+    xmin = t7data['rmin']
+    xmax = t7data['rmax']
+    nx   = t7data['nr']
+    #freq = t7data['freq']
+    
+    
+    header = f"""{xmin} {xmax} {nx-1}
+{ymin} {ymax} {ny-1}"""
+    
+    
+    if 'Ez' in t7data:
+        keys = ['Er', 'Ez']
+    else:
+        keys = ['Br', 'Bz']
+    
+    # Unroll the arrays
+    dat = np.array([t7data[f].reshape(nx*ny, order='F').T for f in keys]).T
     
     np.savetxt(filename, dat, header=header, comments='',  fmt = fmt)
     
