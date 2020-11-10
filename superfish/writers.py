@@ -1,11 +1,14 @@
 import numpy as np
+import scipy.constants
+mu_0 = scipy.constants.mu_0
 
 def fish_externalfield_data(t7data,
                       eleAnchorPt = 'beginning',
                       fieldScale = 1,
                       RFphase = 0,
-                      zmin = 0,
-                      name = None
+                      z_offset = 0,
+                      name = None,
+                      normalize_by_Ez0=False
                       ):
     """
     Input: 
@@ -23,8 +26,10 @@ def fish_externalfield_data(t7data,
     and therefore B = -i * mu_0 * H_phi is the complex magnetic field in Tesla
     
     Output:
-        attrs, components
-        
+        dict with dicts:
+            attrs
+            components
+            
     that are ready to be written to an HDF5 file. 
         
     
@@ -32,9 +37,6 @@ def fish_externalfield_data(t7data,
     
     attrs = {}
     attrs['eleAnchorPt'] = eleAnchorPt
-    
-    # Set requested zmin
-    attrs['gridOriginOffset'] = (0, 0, zmin)
     
     # Use these to calculate spacing
     zmin = t7data['zmin']*.01
@@ -51,12 +53,18 @@ def fish_externalfield_data(t7data,
     dr = (rmax)/(nr-1)
     
     attrs['gridGeometry'] = 'cylindrical'
+    attrs['axisLabels'] = ('r', 'theta', 'z')
     attrs['gridLowerBound'] = (0, 1, 0)
-    
+    attrs['gridSize'] = (nr, 1, nz)        
     attrs['gridSpacing'] = (dr, 0, dz)
+    
+    # Set requested zmin
+    attrs['gridOriginOffset'] = (0, 0, zmin+z_offset)
+    
     attrs['fundamentalFrequency'] = t7data['freq']*1e6
     
-    attrs['masterParameter'] = 'VOLTAGE'
+    # Bmad non-standard
+    ## attrs['masterParameter'] = 'VOLTAGE'
     
     attrs['harmonic'] = 1
     attrs['RFphase'] = RFphase
@@ -64,15 +72,20 @@ def fish_externalfield_data(t7data,
     if name:
         attrs['name'] = name     
             
-    # Normalize on-axis field        
-    Ez0_max = 1e6*np.abs(t7data['Ez'][0,:]).max() # V/m
+    # Normalize on-axis field
+    if normalize_by_Ez0:
+        Ez0_max = 1e6*np.abs(t7data['Ez'][0,:]).max() # V/m
+    else:
+        Ez0_max = 1
         
     components = {}
-    components['Er'] = t7data['Er'].reshape(nr, 1, nz) * 1e6/Ez0_max 
-    components['Ez'] = t7data['Ez'].reshape(nr, 1, nz) * 1e6/Ez0_max
-    components['Btheta'] = t7data['Hphi'].reshape(nr, 1, nz) * -4e-7j*np.pi/Ez0_max # -i * mu_0
+    components['electricField/r'] = t7data['Er'].reshape(nr, 1, nz).astype(np.complex) * 1e6/Ez0_max
+    components['electricField/z'] = t7data['Ez'].reshape(nr, 1, nz).astype(np.complex) * 1e6/Ez0_max
+    components['magneticField/theta'] = t7data['Hphi'].reshape(nr, 1, nz) * -1j*mu_0/Ez0_max # -i * mu_0
     
-    return attrs, components
+    
+    
+    return dict(attrs=attrs, components=components)
 
 
 
@@ -80,15 +93,18 @@ def poisson_externalfield_data(t7data,
                       eleAnchorPt = 'beginning',
                       fieldScale = 1,
                       type='electric',
-                      zmin = 0,
-                      name = None
+                      z_offset=0,
+                      name = None,
+                      normalize_by_fz0=False                               
                       ):
     """
     Input: 
         t7data dict from a parsed T7 file. This is in the native Superfish units. 
     
     Output:
-        attrs, components
+        dict with dicts:
+            attrs
+            components
         
     that are ready to be written to an HDF5 file. 
         
@@ -100,10 +116,7 @@ def poisson_externalfield_data(t7data,
     assert eleAnchorPt in ['beginning', 'center', 'end'], f'Unallowed eleAnchorPt point: {eleAnchorPt}'
     
     attrs['eleAnchorPt'] = eleAnchorPt
-    
-    # Set requested zmin
-    attrs['gridOriginOffset'] = (0, 0, zmin)
-    
+        
     # Use these to calculate spacing
     zmin = t7data['zmin']*.01
     zmax = t7data['zmax']*.01
@@ -119,11 +132,15 @@ def poisson_externalfield_data(t7data,
     dr = (rmax)/(nr-1)
     
     attrs['gridGeometry'] = 'cylindrical'
+    attrs['axisLabels'] = ('r', 'theta', 'z')
     attrs['gridLowerBound'] = (0, 1, 0)
-    
+    attrs['gridSize'] = (nr, 1, nz)        
     attrs['gridSpacing'] = (dr, 0, dz)
-    attrs['fundamentalFrequency'] = 0
     
+    # Set requested zmin
+    attrs['gridOriginOffset'] = (0, 0, zmin+z_offset)    
+    
+    attrs['fundamentalFrequency'] = 0
     attrs['harmonic'] = 0
     
     if name:
@@ -132,21 +149,29 @@ def poisson_externalfield_data(t7data,
     if type=='electric':
         fr = 'Er'
         fz = 'Ez'  
+        ofr = 'electricField/r' # Ouptut names
+        ofz = 'electricField/z'
         attrs['masterParameter'] = 'VOLTAGE'
         
     elif type=='magnetic':
         fr = 'Br'
         fz = 'Bz' 
-        attrs['masterParameter'] = 'BS_FIELD'
+        ofr = 'magneticField/r'
+        ofz = 'magneticField/z'
+        # Bmad non-standard
+        ## attrs['masterParameter'] = 'BS_FIELD'
             
-    # Normalize on-axis field        
-    fz0_max = np.abs(t7data[fz][0,:]).max()            
+    # Normalize on-axis field     
+    if normalize_by_fz0:
+        fz0_max = np.abs(t7data[fz][0,:]).max()            
+    else:
+        fz0_max = 1
         
     components = {}
-    components[fr] = t7data[fr].reshape(nr, 1, nz) /fz0_max
-    components[fz] = t7data[fz].reshape(nr, 1, nz) /fz0_max    
+    components[ofr] = t7data[fr].reshape(nr, 1, nz) /fz0_max
+    components[ofz] = t7data[fz].reshape(nr, 1, nz) /fz0_max    
 
-    return attrs, components
+    return dict(attrs=attrs, components=components)
     
 
 def write_fish_t7(filename, t7data,  fmt='%10.8e'):
