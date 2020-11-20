@@ -151,15 +151,17 @@ def poisson_externalfield_data(t7data,
         fz = 'Ez'  
         ofr = 'electricField/r' # Ouptut names
         ofz = 'electricField/z'
-        attrs['masterParameter'] = 'VOLTAGE'
-        
+         # Bmad non-standard
+         # attrs['masterParameter'] = 'VOLTAGE'     
     elif type=='magnetic':
         fr = 'Br'
         fz = 'Bz' 
         ofr = 'magneticField/r'
         ofz = 'magneticField/z'
         # Bmad non-standard
-        ## attrs['masterParameter'] = 'BS_FIELD'
+        # attrs['masterParameter'] = 'BS_FIELD'
+    else:
+        raise ValueError(f"Unknown type: {type}. Allowed: 'electric' or 'magnetic'")
             
     # Normalize on-axis field     
     if normalize_by_fz0:
