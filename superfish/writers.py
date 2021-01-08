@@ -2,6 +2,8 @@ import numpy as np
 import scipy.constants
 mu_0 = scipy.constants.mu_0
 
+import warnings
+
 def fish_externalfield_data(t7data,
                       eleAnchorPt = 'beginning',
                       fieldScale = 1,
@@ -34,6 +36,7 @@ def fish_externalfield_data(t7data,
         
     
     """
+    warnings.warn('fish_externalfield_data should be replaced by direct parsing using openPMD-beamphyics', DeprecationWarning)
     
     attrs = {}
     attrs['eleAnchorPt'] = eleAnchorPt
@@ -142,6 +145,7 @@ def poisson_externalfield_data(t7data,
     
     attrs['fundamentalFrequency'] = 0
     attrs['harmonic'] = 0
+    attrs['RFphase'] = 0
     
     if name:
         attrs['name'] = name     
@@ -151,6 +155,7 @@ def poisson_externalfield_data(t7data,
         fz = 'Ez'  
         ofr = 'electricField/r' # Ouptut names
         ofz = 'electricField/z'
+        factor = 1 # V/m
          # Bmad non-standard
          # attrs['masterParameter'] = 'VOLTAGE'     
     elif type=='magnetic':
@@ -158,6 +163,7 @@ def poisson_externalfield_data(t7data,
         fz = 'Bz' 
         ofr = 'magneticField/r'
         ofz = 'magneticField/z'
+        factor = 1e-4 # G -> T
         # Bmad non-standard
         # attrs['masterParameter'] = 'BS_FIELD'
     else:
@@ -165,13 +171,13 @@ def poisson_externalfield_data(t7data,
             
     # Normalize on-axis field     
     if normalize_by_fz0:
-        fz0_max = np.abs(t7data[fz][0,:]).max()            
+        fz0_max = np.abs(t7data[fz][0,:]*factor).max()            
     else:
         fz0_max = 1
         
     components = {}
-    components[ofr] = t7data[fr].reshape(nr, 1, nz) /fz0_max
-    components[ofz] = t7data[fz].reshape(nr, 1, nz) /fz0_max    
+    components[ofr] = t7data[fr].reshape(nr, 1, nz)*factor/fz0_max
+    components[ofz] = t7data[fz].reshape(nr, 1, nz)*factor/fz0_max    
 
     return dict(attrs=attrs, components=components)
     

@@ -102,6 +102,22 @@ class Superfish:
         
         self.configured = True  
 
+    def fieldmesh(self, zmin=-1000, zmax=1000, nz=100, rmin=0, rmax=0, nr=1):
+        """
+        Interpolates field over a grid. Similar to .interpolate 
+        
+        Returns an openPMD-beamphysics FieldMesh object
+        """
+    
+        FM = interpolate2d(
+            self,
+            zmin=zmin, zmax=zmax, nz=nz,
+            rmin=rmin, rmax=rmax, nr=nr,
+            return_fieldmesh=True
+        )
+        
+        return FM        
+        
     def interpolate(self, zmin=-1000, zmax=1000, nz=100, rmin=0, rmax=0, nr=1):
         """
         Interpolates field over a grid. 
