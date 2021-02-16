@@ -77,6 +77,7 @@ def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap
     If perp_scal >0, the field strength will be drawn as a perpendicular line. 
     max_field and the color map are needed to color these
     
+    conv is the unit conversion factor used by Superfish. 
     
     """
     
@@ -95,7 +96,6 @@ def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap
     
         px, py = perp(x, y, scale=scales)
         
-        
         if not cmap:
             cmap = CMAP0    
         
@@ -112,13 +112,16 @@ def plot_wall(wall_segments,
               max_field=None,
               cmap=None,
               ax = None,
+              conv=1,
+              return_figure=False,
+              
               **kwargs):
     """
     Plots the wall from wall segments.
     
     If perp_scale > 0, the field will be plotted
     
-    conv is the unit conversion factor used by Superfish. 
+    conv is the conversion factor to internal units. If given, the 
     
     TODO: this is only for FISH problems so far
     
@@ -126,8 +129,6 @@ def plot_wall(wall_segments,
     
     if not ax:
         fig, ax = plt.subplots( **kwargs)
-    
-
     
     if not cmap:
         cmap = plt.get_cmap('plasma')    
@@ -140,18 +141,27 @@ def plot_wall(wall_segments,
     for seg in wall_segments:
         add_wall_segment_to_axes(seg, ax, perp_scale=perp_scale,
                                  field=field,
-                                 max_field=max_field, cmap=cmap)
+                                 max_field=max_field, cmap=cmap, 
+                                 conv=conv)
       
     # Labels and units
     units = wall_segments[0]['units']
 
     ax.set_aspect('equal')
-    ax.set_xlabel('z '+units['Z'])
-    ax.set_ylabel('r '+units['R'])    
+    if conv == 1:
+        ax.set_xlabel('z '+units['Z'])
+        ax.set_ylabel('r '+units['R'])  
+        
+    else:
+        ax.set_xlabel('z (cm)')
+        ax.set_ylabel('r (cm)')    
     
     
     if perp_scale == 0:
-        return
+        if return_figure:
+            return fig
+        else:
+            return
         
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
@@ -174,6 +184,10 @@ def plot_wall(wall_segments,
     norm = matplotlib.colors.Normalize(vmin=0, vmax=max_field*sc)
     fig.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap),
              cax=cax, orientation='vertical', label=f'|{field}| max {field_unit}')             
+    
+    if return_figure:
+        return fig
+    
     
 #plot_wall(SF.output['sfo']['wall_segments'], perp_scale=0, field='H', figsize=(20,8))                
 

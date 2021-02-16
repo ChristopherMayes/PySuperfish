@@ -77,6 +77,19 @@ class Superfish:
     def automesh_name(self):
         return self.basename+'.AM'
         
+    def param(self, key):
+        """
+        Parameters (Variables and Constants) from the readback in the SFO file. 
+        """
+        return self.output['sfo']['header']['variable'][key]
+  
+    def param_info(self, key):
+        """
+        Returns the description of a paramater
+        """
+        return self.output['sfo']['header']['description'][key]
+    
+        
     def configure(self):     
         """
         Configures paths to run in.
@@ -102,17 +115,52 @@ class Superfish:
         
         self.configured = True  
 
-    def fieldmesh(self, zmin=-1000, zmax=1000, nz=100, rmin=0, rmax=0, nr=1):
+    def fieldmesh(self, 
+                  zmin=-100, 
+                  zmax=100, 
+                  nz=0,
+                  dz=0,
+                  rmin=0, 
+                  rmax=100, 
+                  nr=0,
+                  dr=0):
         """
-        Interpolates field over a grid. Similar to .interpolate 
+        Interpolates field over a grid. Similar to .interpolate, 
+        but input units are in meters. 
+        
+        Various combinations of the spacings and grid point numbers
+        nz, dz, nr, nz can be used.
+        If nether is specified, a default of 100 grid points will be used.
         
         Returns an openPMD-beamphysics FieldMesh object
         """
     
+        conv = self.param('CONV')
+        fac = 100/conv
+        
+        # Various input possibilities for the grid
+        if dz and nz:
+            zmax = zmin + (nz-1)*dz
+        elif dz and not nz:
+            nz = int((zmax-zmin)/dz)+1
+            zmax = zmin + (nz-1)*dz
+        elif not dz and not nz:
+            # Default
+            nz = 100
+            
+        if dr and nr:
+            rmax = rmin + (nr-1)*dr
+        elif dr and not nr:
+            nr = int((rmax-rmin)/dr)+1
+            rmax = rmin + (nr-1)*dr           
+        elif not dr and not nr:
+            # Default
+            nr = 100
+
         FM = interpolate2d(
             self,
-            zmin=zmin, zmax=zmax, nz=nz,
-            rmin=rmin, rmax=rmax, nr=nr,
+            zmin=zmin*fac, zmax=zmax*fac, nz=nz,
+            rmin=rmin*fac, rmax=rmax*fac, nr=nr,
             return_fieldmesh=True
         )
         
@@ -268,8 +316,15 @@ class Superfish:
         
         self.vprint('Parsed output:', sfofile)
 
-    def plot_wall(self, **kwargs):
-        plot_wall(self.output['sfo']['wall_segments'], **kwargs)
+    def plot_wall(self, units='original', **kwargs):
+        if units == 'original':
+            conv = 1
+        elif units == 'cm':
+            conv = self.param('CONV')
+        else:
+            raise ValueError(f'Units must be original or cm: {units}')
+            
+        plot_wall(self.output['sfo']['wall_segments'], conv=conv, **kwargs)
 
     def write_input(self):
         """
