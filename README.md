@@ -19,6 +19,10 @@ https://github.com/hhslepicka/docker-poisson-superfish
 docker pull hhslepicka/poisson-superfish:latest
 ```
 
+Public (you must provide the executables)
+
+https://github.com/hhslepicka/docker-poisson-superfish-nobin
+
 ## Shifter (NERSC)
 
 ```bash
