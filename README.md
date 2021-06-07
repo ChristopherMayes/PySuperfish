@@ -1,4 +1,4 @@
-# pySuperfish
+# PySuperfish
 Python tools for Poisson Superfish calculations
 
 https://laacg.lanl.gov
@@ -11,6 +11,10 @@ https://laacg.lanl.gov
 
 ## Docker 
 
+Public (you must provide the executables)
+
+https://github.com/hhslepicka/docker-poisson-superfish-nobin
+
 (Private)
 
 https://github.com/hhslepicka/docker-poisson-superfish
@@ -18,10 +22,6 @@ https://github.com/hhslepicka/docker-poisson-superfish
 ```bash
 docker pull hhslepicka/poisson-superfish:latest
 ```
-
-Public (you must provide the executables)
-
-https://github.com/hhslepicka/docker-poisson-superfish-nobin
 
 ## Shifter (NERSC)
 
