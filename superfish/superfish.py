@@ -243,17 +243,17 @@ class Superfish:
         return cmd
         
     def run_cmd(self, *cmds, **kwargs):
-        """
-        Runs a command in in self.
+        r"""
+        Runs a command in self.
         
         Example:
             .run_cmd(['C:\LANL\AUTOMESH.EXE', 'TEST.AM'], timeout=1)
         
         """
-        if platform.system() == 'Windows':
-            cmds = self.windows_run_cmd(*cmds)
-        else:
+        if self.use_container:
             cmds = self.container_run_cmd(*cmds)
+        else:
+            cmds = self.windows_run_cmd(*cmds)
         
         self.vprint(f'Running: {cmds}')
     

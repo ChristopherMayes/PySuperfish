@@ -76,9 +76,13 @@ End"""
     with open(inifile, 'w') as f:
         f.write("""[global]
 Force1MVperMeter=No""")
+
+    # Needed on WSL, otherwise optional
+    t35file = sf.basename+'.T35'
     
+        
     # Run
-    sf.run_cmd('sf7', ifile)
+    sf.run_cmd('sf7', ifile, t35file)
     
     # Get the filename
     t7file = get_t7(sf.path)

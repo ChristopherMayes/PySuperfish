@@ -82,8 +82,8 @@ def fish_externalfield_data(t7data,
         Ez0_max = 1
         
     components = {}
-    components['electricField/r'] = t7data['Er'].reshape(nr, 1, nz).astype(np.complex) * 1e6/Ez0_max
-    components['electricField/z'] = t7data['Ez'].reshape(nr, 1, nz).astype(np.complex) * 1e6/Ez0_max
+    components['electricField/r'] = t7data['Er'].reshape(nr, 1, nz).astype(complex) * 1e6/Ez0_max
+    components['electricField/z'] = t7data['Ez'].reshape(nr, 1, nz).astype(complex) * 1e6/Ez0_max
     components['magneticField/theta'] = t7data['Hphi'].reshape(nr, 1, nz) * -1j*mu_0/Ez0_max # -i * mu_0
     
     
