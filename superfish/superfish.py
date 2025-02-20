@@ -116,14 +116,11 @@ class Superfish:
         self.configured = True  
 
     def fieldmesh(self, 
-                  zmin=-100, 
-                  zmax=100, 
-                  nz=0,
-                  dz=0,
-                  rmin=0, 
-                  rmax=100, 
-                  nr=0,
-                  dr=0):
+                  zmin=-100, zmax=100, nz=0, dz=0,
+                  rmin=0, rmax=100, nr=0, dr=0,
+                  xmin=-100, xmax=100, nx=0, dx=0,
+                  ymin=0, ymax=100, ny=0, dy=0
+                 ):
         """
         Interpolates field over a grid. Similar to .interpolate, 
         but input units are in meters. 
@@ -137,47 +134,106 @@ class Superfish:
     
         conv = self.param('CONV')
         fac = 100/conv
-        
-        # Various input possibilities for the grid
-        if dz and nz:
-            zmax = zmin + (nz-1)*dz
-        elif dz and not nz:
-            nz = int((zmax-zmin)/dz)+1
-            zmax = zmin + (nz-1)*dz
-        elif not dz and not nz:
-            # Default
-            nz = 100
-            
-        if dr and nr:
-            rmax = rmin + (nr-1)*dr
-        elif dr and not nr:
-            nr = int((rmax-rmin)/dr)+1
-            rmax = rmin + (nr-1)*dr           
-        elif not dr and not nr:
-            # Default
-            nr = 100
 
-        FM = interpolate2d(
-            self,
-            zmin=zmin*fac, zmax=zmax*fac, nz=nz,
-            rmin=rmin*fac, rmax=rmax*fac, nr=nr,
-            return_fieldmesh=True
-        )
+        if self.geometry == 'cylindrical':
+            # Various input possibilities for the grid
+            if dz and nz:
+                zmax = zmin + (nz-1)*dz
+            elif dz and not nz:
+                nz = int((zmax-zmin)/dz)+1
+                zmax = zmin + (nz-1)*dz
+            elif not dz and not nz:
+                # Default
+                nz = 100
+                
+            if dr and nr:
+                rmax = rmin + (nr-1)*dr
+            elif dr and not nr:
+                nr = int((rmax-rmin)/dr)+1
+                rmax = rmin + (nr-1)*dr           
+            elif not dr and not nr:
+                # Default
+                nr = 100
+    
+            FM = interpolate2d(
+                self,
+                zmin=zmin*fac, zmax=zmax*fac, nz=nz,
+                rmin=rmin*fac, rmax=rmax*fac, nr=nr,
+                return_fieldmesh=True
+            )
+
+        elif self.geometry == 'rectangular':
+            # Various input possibilities for the grid
+            if dx and nx:
+                xmax = xmin + (nx-1)*dx
+            elif dx and not nx:
+                nx = int((xmax-xmin)/dx)+1
+                xmax = xmin + (nx-1)*dx
+            elif not dx and not nx:
+                # Default
+                nx = 100
+                
+            if dy and ny:
+                ymax = ymin + (ny-1)*dy
+            elif dy and not ny:
+                ny = int((ymax-ymin)/dy)+1
+                ymax = ymin + (ny-1)*dy           
+            elif not dy and not ny:
+                # Default
+                ny = 100
+    
+            FM = interpolate2d(
+                self,
+                xmin=xmin*fac, xmax=xmax*fac, nx=nx,
+                ymin=ymin*fac, ymax=ymax*fac, ny=ny,
+                return_fieldmesh=True
+            )
+
+        else:
+            raise ValueError(f'Unknown geometry: {self.geometry}!')
         
         return FM        
         
-    def interpolate(self, zmin=-1000, zmax=1000, nz=100, rmin=0, rmax=0, nr=1):
+    def interpolate(self,
+                    zmin=None, zmax=None, nz=None,
+                    rmin=None, rmax=None, nr=None, 
+                    xmin=None, xmax=None, nx=None,
+                    ymin=None, ymax=None, ny=None):
         """
         Interpolates field over a grid. 
+        - Uses z and r coordinates for cylindrical geometry
+        - Uses x and y coordinates for rectangular geometry
         """
-    
-        t7data = interpolate2d(
-            self,
-            zmin=zmin, zmax=zmax, nz=nz,
-            rmin=rmin, rmax=rmax, nr=nr
-        )
+
+
+        if self.geometry == 'cylindrical':  
+
+            error_str = 'Inncorrect keyword arguments for cylindrical geometry, please use "[z, r]min", "[z, r]max", "n[z, r]"'
+
+            assert xmin is None and xmax is None and nx is None, error_str
+            assert ymin is None and ymax is None and ny is None, error_str
+            
+            interp_data = interpolate2d(self,
+                                        rmin=rmin, rmax=rmax, nr=nr,
+                                        zmin=zmin, zmax=zmax, nz=nz)
+
+        elif  self.geometry == 'rectangular':
+
+            error_str = 'Inncorrect keyword arguments for rectangular geometry, please use "[x, y]min", "[x, y]max", "n[x, y]"'
+
+            assert rmin is None and rmax is None and nr is None, error_str
+            assert zmin is None and zmax is None and nz is None, error_str
+            
+            interp_data = interpolate2d(self,
+                                        xmin=xmin, xmax=xmax, nx=nx,
+                                        ymin=ymin, ymax=ymax, ny=ny)
+
+        else:
+            raise ValueError(f'Unknown geometry: {self.geometry}!')
         
-        return t7data
+        self.output['sf7'] = interp_data
+        
+        return interp_data
 
     def run(self):
         """
@@ -297,8 +353,18 @@ class Superfish:
         basename = os.path.splitext(fname)[0].upper()
         self.input = dict(basename=basename)
 
-        self.input['automesh'] = parsers.parse_automesh(f)  
+        with open(f, 'r') as fid:
+            self.input['automesh'] = fid.readlines()
 
+        # Look for key word in automesh file that turns on cylindrical symmetry
+        self.input['geometry'] = None
+        for line in self.input['automesh']:
+            if 'icylin=1' in line.replace(' ', '').lower():
+                self.input['geometry'] = 'cylindrical'
+        if self.input['geometry'] is None:
+            self.input['geometry'] = 'rectangular'
+         
+    
     def load_output(self):
         """
         Loads SFO output file
@@ -309,7 +375,7 @@ class Superfish:
         sfofile = os.path.join(self.path, self.basename+'.SFO')
         
         if not os.path.exists(sfofile):
-            self.vprint('Warking: no SFO file to load.')
+            self.vprint('Warning: no SFO file to load.')
             return
         
         self.output['sfo'] = parsers.parse_sfo(sfofile)
@@ -346,4 +412,8 @@ class Superfish:
         if self.configured:
             return f'<Superfish configured to run in {self.path}>' 
         
-        return f'<Superfish at {memloc}>'        
+        return f'<Superfish at {memloc}>'    
+
+    @property
+    def geometry(self):
+        return self.input['geometry']

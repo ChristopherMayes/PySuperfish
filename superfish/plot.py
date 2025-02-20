@@ -36,6 +36,65 @@ def add_t7data_to_axes(t7data, ax, field='E', cmap=None, vmin=1e-19, scale=1):
     
     return ax
 
+def add_sf7_data_to_axes(sf7_data, ax, cmap=None, vmin=1e-19, scale=1, field=None, return_figure=None):
+
+    extent = [sf7_data[k]*scale for k in ('xmin', 'xmax', 'ymin', 'ymax')]
+
+    if not cmap:
+        cmap = CMAP0
+
+    # If no field component is specified, use magnitude of the field
+    if field is None:  
+        
+        if ('Ex' in sf7_data and 'Ey' in sf7_data) or ('Er' in sf7_data and 'Ez' in sf7_data):
+            field = '|E|'
+            
+        elif ('Bx' in sf7_data and 'By' in sf7_data) or ('Br' in sf7_data and 'Bz' in sf7_data):
+            field = '|B|'
+
+        else:
+            raise ValueError('Could not locate field type')
+        
+    if field in ('|E|', '|B|') and field not in sf7_data:
+        data = np.hypot(sf7_data[field.replace('|', '')+'x'], sf7_data[field.replace('|', '')+'y'])
+    else:
+        data = sf7_data[field]
+
+    min_field, max_field = data.min(), data.max()
+        
+    
+    ax.imshow(data.T, extent=extent, cmap=cmap, vmin=vmin, origin='lower')
+
+    # Legend units
+    field_unit = sf7_data['units'][field]
+    
+    # Tweak for convenience
+    if field_unit=='(V/m)' and max_field >1e6:
+        sc = 1e-6
+        field_unit='(MV/m)'
+    elif field_unit=='(V/cm)' and max_field >1e4:
+        sc = 1e-4
+        field_unit='(MV/m)'        
+        
+    else:
+        sc = 1
+
+
+    fig = plt.gcf()
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    
+    # Add legend
+    norm = matplotlib.colors.Normalize(vmin=min_field*sc, vmax=max_field*sc)
+    fig.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap),
+                 cax=cax, 
+                 orientation='vertical', label=f'{field} ({field_unit})', ax=ax)             
+    
+    if return_figure:
+        return fig
+    
+    return ax
+
 
 
 
@@ -80,9 +139,17 @@ def add_wall_segment_to_axes(seg, ax, perp_scale=0, max_field=1, field='E', cmap
     conv is the unit conversion factor used by Superfish. 
     
     """
-    
-    x = seg['wall']['Z']*conv
-    y = seg['wall']['R']*conv
+
+    # Make sure coordinates in segment make sense
+    assert ('X' in seg['wall'] and 'Y' in seg['wall']) or ('Z' in seg['wall'] and 'R' in seg['wall']), 'unknown coordinates in wall segments'
+
+    if 'X' in seg['wall'] and 'Y' in seg['wall']:  # Rectangular geometry
+        x = seg['wall']['X']*conv
+        y = seg['wall']['Y']*conv
+        
+    else:  # Cylindrical geometry
+        x = seg['wall']['Z']*conv
+        y = seg['wall']['R']*conv
 
     # Wall segment
     ax.plot(x, y, color='black')
@@ -113,8 +180,7 @@ def plot_wall(wall_segments,
               cmap=None,
               ax = None,
               conv=1,
-              return_figure=False,
-              
+              return_figure=False,     
               **kwargs):
     """
     Plots the wall from wall segments.
@@ -137,7 +203,16 @@ def plot_wall(wall_segments,
         max_field = np.array([seg['wall'][field].max() for seg in wall_segments]).max()
     else:
         max_field = 0
-    
+
+    # Get coordinate labels:
+    seg0 = wall_segments[0]
+    if 'X' in seg0['wall'] and 'Y' in seg0['wall']:  # Rectangular geometry
+        x_label='x'
+        y_label='y'
+    elif 'Z' in seg0['wall'] and 'R' in seg0['wall']:
+        x_label='z'
+        y_label='r'
+
     for seg in wall_segments:
         add_wall_segment_to_axes(seg, ax, perp_scale=perp_scale,
                                  field=field,
@@ -147,14 +222,17 @@ def plot_wall(wall_segments,
     # Labels and units
     units = wall_segments[0]['units']
 
+    
+    
+
     ax.set_aspect('equal')
     if conv == 1:
-        ax.set_xlabel('z '+units['Z'])
-        ax.set_ylabel('r '+units['R'])  
+        ax.set_xlabel(f'{x_label} {units[x_label.upper()]}')
+        ax.set_ylabel(f'{y_label} {units[y_label.upper()]}')  
         
     else:
-        ax.set_xlabel('z (cm)')
-        ax.set_ylabel('r (cm)')    
+        ax.set_xlabel(f'{x_label} (cm)')
+        ax.set_ylabel(f'{y_label} (cm)')    
     
     
     if perp_scale == 0:
@@ -179,11 +257,11 @@ def plot_wall(wall_segments,
         
     else:
         sc = 1
-     
+    
     # Add legend
     norm = matplotlib.colors.Normalize(vmin=0, vmax=max_field*sc)
     fig.colorbar(matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap),
-             cax=cax, orientation='vertical', label=f'|{field}| max {field_unit}')             
+                 cax=cax, orientation='vertical', label=f'|{field}| max {field_unit}', ax=ax)             
     
     if return_figure:
         return fig

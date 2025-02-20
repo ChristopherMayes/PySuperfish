@@ -4,10 +4,10 @@
 import numpy as np
 import os
 
-def parse_automesh(file):
-    if os.path.exists(file):
-        lines = open(file, 'r').readlines()
-    return lines
+#def parse_automesh(file):
+#    with open(file, 'r') as fid:
+#        lines = fid.readlines()
+#    return lines
 
 
 def parse_sfo(filename, verbose=False):
@@ -195,7 +195,7 @@ def parse_fish_t7(t7file, geometry='cylindrical'):
     
     return d
 
-def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
+def parse_poisson_t7(t7file, geometry, type='electric'):
     """
     Parses a T7 file. The T7 header should have:
     
@@ -203,17 +203,17 @@ def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
     ymin(cm), ymax(cm), ny-1
     
     For type=='electric':
-        2 columns of data: Er, Ez
+        2 columns of data: {Er, Ez} or {Ex, Ey} 
         Units are in V/cm
     
     For type=='magnetic':
-        2 columns of data: Br, Bz
+        2 columns of data: {Br, Bz} or {Bx, By}
         Units are G
     
     Returns a dict with:
-        rmin
-        rmax
-        nr
+        xmin
+        xmax
+        nx
         ymin
         ymax
         ny
@@ -221,7 +221,6 @@ def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
     
     
     """
-    assert geometry == 'cylindrical', 'TODO: other geometries'
 
     if type == 'electric':
         labels = 'Er', 'Ez'
@@ -239,13 +238,23 @@ def parse_poisson_t7(t7file, type='electric', geometry='cylindrical'):
     d = {}
     d['geometry'] = geometry
     d['problem'] = 'poisson'        
-    d['rmin'], d['rmax'], d['nr'] =  float(xline[0]), float(xline[1]), int(xline[2])+1
-    d['zmin'], d['zmax'], d['nz'] =  float(yline[0]), float(yline[1]), int(yline[2])+1
+
+    if geometry == 'cylindrical':
+        d['rmin'], d['rmax'], d['nr'] =  float(xline[0]), float(xline[1]), int(xline[2])+1
+        d['zmin'], d['zmax'], d['nz'] =  float(yline[0]), float(yline[1]), int(yline[2])+1
+        
+    elif geometry == 'rectangular':
+        d['ymin'], d['ymax'], d['ny'] =  float(xline[0]), float(xline[1]), int(xline[2])+1
+        d['xmin'], d['xmax'], d['nx'] =  float(yline[0]), float(yline[1]), int(yline[2])+1
     
     # Read and reshape
     dat4 = np.loadtxt(t7file, skiprows=2)
     ncol = len(labels)
-    dat4 = dat4.reshape(d['nz'], d['nr'], ncol)
+
+    if geometry == 'cylindrical':
+        dat4 = dat4.reshape(d['nz'], d['nr'], ncol)
+    elif geometry == 'rectangular':
+        dat4 = dat4.reshape(d['nx'], d['ny'], ncol)
     
     for i, label in enumerate(labels):
         d[label] = dat4[:,:,i].T
