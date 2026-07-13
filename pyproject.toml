@@ -9,11 +9,7 @@ readme = "README.md"
 requires-python = ">=3.7"
 license = { file = "LICENSE" }
 dynamic = ["version"]
-dependencies = [
-    "numpy",
-    "matplotlib",
-    "openpmd_beamphysics",
-]
+dependencies = ["numpy", "matplotlib", "openpmd-beamphysics"]
 
 [project.urls]
 Homepage = "https://github.com/ChristopherMayes/PySuperfish"
