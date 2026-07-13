@@ -102,11 +102,15 @@ else
   TARGET_DESC="$ENV_NAME"
 fi
 
-echo ">> Creating/updating conda environment: $TARGET_DESC"
-"$CONDA" create -y -c conda-forge "${TARGET_FLAG[@]}" \
-  python numpy matplotlib pip
-
-activate_env "$TARGET_DESC"
+# Try to activate an existing environment; create it only if activation fails.
+if activate_env "$TARGET_DESC" 2>/dev/null; then
+  echo ">> Environment already exists, reusing: $TARGET_DESC"
+else
+  echo ">> Creating conda environment: $TARGET_DESC"
+  "$CONDA" create -y -c conda-forge "${TARGET_FLAG[@]}" \
+    python numpy matplotlib pip
+  activate_env "$TARGET_DESC"
+fi
 
 echo ">> Active environment prefix: $CONDA_PREFIX"
 
