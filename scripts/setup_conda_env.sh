@@ -72,20 +72,27 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Prefer mamba if available; fall back to conda.
-if command -v mamba >/dev/null 2>&1; then
+if command -v micromamba >/dev/null 2>&1 || [[ -n "${MAMBA_EXE:-}" ]]; then
+  CONDA=micromamba
+  # shellcheck disable=SC1090
+  eval "$("${MAMBA_EXE:-micromamba}" shell hook --shell bash)"
+  activate_env() { micromamba activate "$1"; }
+elif command -v mamba >/dev/null 2>&1; then
   CONDA=mamba
+  # shellcheck disable=SC1091
+  source "$(mamba info --base)/etc/profile.d/conda.sh"
+  activate_env() { conda activate "$1"; }
 elif command -v conda >/dev/null 2>&1; then
   CONDA=conda
+  # shellcheck disable=SC1091
+  source "$(conda info --base)/etc/profile.d/conda.sh"
+  activate_env() { conda activate "$1"; }
 else
-  echo "error: neither mamba nor conda found on PATH" >&2
+  echo "error: none of micromamba, mamba, or conda found on PATH" >&2
   exit 1
 fi
 
-# Make `conda activate` usable from a non-interactive script.
-CONDA_BASE="$(conda info --base)"
-# shellcheck disable=SC1091
-[ -f "$CONDA_BASE/etc/profile.d/conda.sh" ] && source "$CONDA_BASE/etc/profile.d/conda.sh"
+echo "Using: $CONDA."
 
 if [[ -n "$ENV_PREFIX" ]]; then
   TARGET_FLAG=(-p "$ENV_PREFIX")
@@ -99,8 +106,8 @@ echo ">> Creating/updating conda environment: $TARGET_DESC"
 "$CONDA" create -y -c conda-forge "${TARGET_FLAG[@]}" \
   python numpy matplotlib pip
 
-# `conda activate` takes a name or a path directly (not -n/-p flags).
-conda activate "$TARGET_DESC"
+activate_env "$TARGET_DESC"
+
 echo ">> Active environment prefix: $CONDA_PREFIX"
 
 echo ">> Installing pySuperfish from $REPO_ROOT"
