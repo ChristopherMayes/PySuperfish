@@ -11,10 +11,17 @@ import shutil
 
 
 class Superfish:
-    # Class attributes for the container
-    _container_image = "hhslepicka/poisson-superfish:latest"
+    # Class attributes for the container. The image tag and Singularity .sif
+    # path can be overridden via the PYSUPERFISH_CONTAINER_IMAGE /
+    # PYSUPERFISH_SINGULARITY_IMAGE environment variables, which build.sh
+    # honors as well so one variable configures both build and runtime.
+    _container_image = os.environ.get(
+        "PYSUPERFISH_CONTAINER_IMAGE", "poisson-superfish:latest"
+    )
     _windows_exe_path = "C:\\LANL\\"  # Windows only'
-    _singularity_image = "~/poisson-superfish_latest.sif"
+    _singularity_image = os.environ.get(
+        "PYSUPERFISH_SINGULARITY_IMAGE", "~/poisson-superfish_latest.sif"
+    )
 
     # Automatically detect the container method
     if shutil.which("docker"):
