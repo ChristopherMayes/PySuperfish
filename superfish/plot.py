@@ -1,5 +1,5 @@
 from copy import copy
-from typing import Any
+from typing import Any, cast
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -62,15 +62,22 @@ def add_t7data_to_axes(
         The axes that was drawn on.
     """
 
-    extent = [t7data[k] * scale for k in ("zmin", "zmax", "rmin", "rmax")]
+    extent = (
+        t7data["zmin"] * scale,
+        t7data["zmax"] * scale,
+        t7data["rmin"] * scale,
+        t7data["rmax"] * scale,
+    )
 
     if not cmap:
         cmap = get_cmap0()
 
-    if field in ("E", "B") and field not in t7data:
-        data = np.hypot(t7data[field + "r"], t7data[field + "z"])
+    # The field key is dynamic, so bypass the TypedDict for lookups
+    td = cast("dict[str, Any]", t7data)
+    if field in ("E", "B") and field not in td:
+        data = np.hypot(td[field + "r"], td[field + "z"])
     else:
-        data = t7data[field]
+        data = td[field]
 
     ax.imshow(np.flipud(data), extent=extent, cmap=cmap, vmin=vmin)
 

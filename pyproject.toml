@@ -26,5 +26,8 @@ Homepage = "https://github.com/ChristopherMayes/PySuperfish"
 [tool.setuptools.packages.find]
 include = ["superfish*"]
 
+[tool.ty.src]
+exclude = ["docs/", "examples/"]
+
 [tool.setuptools_scm]
 version_file = "superfish/_version.py"

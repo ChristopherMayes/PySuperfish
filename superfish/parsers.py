@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import numpy as np
 
 from .types import (
@@ -56,21 +58,23 @@ def parse_sfo(filename: str, verbose: bool = False) -> SFOOutput:
 
     groups = parse_sfo_into_groups(filename)
 
-    d = {"wall_segments": [], "other": {}}
+    d: SFOOutput = {"wall_segments": [], "other": {}}
 
     for g in groups:
         dat = process_group(g, verbose=verbose)
-        type = dat["type"]
+        gtype = dat["type"]
 
-        if type == "wall_segment":
-            d["wall_segments"].append(dat)
-        elif type in ["summary", "BeamEnergy"]:
-            d[type] = dat
-        elif type == "header":
-            d["header"] = parse_header_lines(dat["lines"])
+        if gtype == "wall_segment":
+            d["wall_segments"].append(cast(WallSegment, dat))
+        elif gtype == "summary":
+            d["summary"] = cast(SFOSummary, dat)
+        elif gtype == "BeamEnergy":
+            d["BeamEnergy"] = cast(SFOSummary, dat)
+        elif gtype == "header":
+            d["header"] = parse_header_lines(cast(UnparsedGroup, dat)["lines"])
 
         else:
-            d["other"][type] = dat
+            d["other"][gtype] = cast(UnparsedGroup, dat)
 
     # update Kinetic energy in 'summary' with the right value
     if "summary" in d and "BeamEnergy" in d:
@@ -106,12 +110,10 @@ def parse_sfo_into_groups(filename: str) -> list[SFOGroup]:
     with open(filename, "r") as f:
         lines = f.readlines()
 
-    groups = []
-
     sep = "-------------------"
 
-    g = {"raw_type": "header", "lines": []}
-    groups = [g]
+    g: SFOGroup = {"raw_type": "header", "lines": []}
+    groups: list[SFOGroup] = [g]
 
     new_group = False
 
@@ -167,33 +169,33 @@ def process_group(
     rtype = group["raw_type"]
     lines = group["lines"]
 
-    d = {}
-
     if rtype.startswith("All calculated values below refer to the mesh geometry only"):
-        d["type"] = "summary"
-        d["data"], d["units"] = parse_sfo_summary_group(lines)
-    elif rtype.startswith("Power and fields on wall segment") or rtype.startswith(
+        data, units = parse_sfo_summary_group(lines)
+        return SFOSummary(type="summary", data=data, units=units)
+
+    if rtype.startswith("Power and fields on wall segment") or rtype.startswith(
         "Fields on segment"
     ):
-        d["type"] = "wall_segment"
         line1 = rtype  # This should be parsed fully
+        seg = parse_sfo_segment([line1] + lines)
+        return WallSegment(
+            type="wall_segment",
+            wall=seg["wall"],
+            info=seg["info"],
+            units=seg["units"],
+        )
 
-        d.update(parse_sfo_segment([line1] + lines))
-    elif rtype.startswith(
+    if rtype.startswith(
         "The field normalization factor ASCALE for this problem is based"
     ):
-        d["type"] = "BeamEnergy"
-        d["data"], d["units"] = parse_sfo_beam_energy(lines)
+        data, units = parse_sfo_beam_energy(lines)
+        return SFOSummary(type="BeamEnergy", data=data, units=units)
 
-    else:
-        # No parser yet:
-        if verbose:
-            print("No parser for:", rtype)
+    # No parser yet:
+    if verbose:
+        print("No parser for:", rtype)
 
-        d["type"] = rtype
-        d["lines"] = lines
-
-    return d
+    return UnparsedGroup(type=rtype, lines=lines)
 
 
 # _________________________________
@@ -245,26 +247,27 @@ def parse_fish_t7(t7file: str, geometry: str = "cylindrical") -> FishT7Data:
         freq_MHz = float(f.readline())
         line3 = f.readline().split()
 
-    # Form output dict
-    d = {}
-    d["geometry"] = geometry
-    d["problem"] = "fish"
-    d["zmin"], d["zmax"], d["nz"] = float(line1[0]), float(line1[1]), int(line1[2]) + 1
-    d["freq"] = freq_MHz
-    d["rmin"], d["rmax"], d["nr"] = float(line3[0]), float(line3[1]), int(line3[2]) + 1
+    nz = int(line1[2]) + 1
+    nr = int(line3[2]) + 1
 
-    # These should be the labels
-    labels = ["Ez", "Er", "E", "Hphi"]
+    # Read and reshape. Columns are Ez, Er, E, Hphi
+    dat4 = np.loadtxt(t7file, skiprows=3).reshape(nr, nz, 4)
 
-    # Read and reshape
-    dat4 = np.loadtxt(t7file, skiprows=3)
-    ncol = len(labels)
-    dat4 = dat4.reshape(d["nr"], d["nz"], ncol)
-
-    for i, label in enumerate(labels):
-        d[label] = dat4[:, :, i]
-
-    return d
+    return FishT7Data(
+        geometry=geometry,
+        problem="fish",
+        zmin=float(line1[0]),
+        zmax=float(line1[1]),
+        nz=nz,
+        freq=freq_MHz,
+        rmin=float(line3[0]),
+        rmax=float(line3[1]),
+        nr=nr,
+        Ez=dat4[:, :, 0],
+        Er=dat4[:, :, 1],
+        E=dat4[:, :, 2],
+        Hphi=dat4[:, :, 3],
+    )
 
 
 def parse_poisson_t7(
@@ -309,10 +312,8 @@ def parse_poisson_t7(
     """
     assert geometry == "cylindrical", "TODO: other geometries"
 
-    if type == "electric":
-        labels = "Er", "Ez"
-    elif type == "magnetic":
-        labels = "Br", "Bz"
+    if type not in ("electric", "magnetic"):
+        raise ValueError(f"Unknown type: {type}. Allowed: 'electric' or 'magnetic'")
 
     # Read header
     # xmin(cm), xmax(cm), nx-1    # r in cylindrical geometry
@@ -321,20 +322,29 @@ def parse_poisson_t7(
         xline = f.readline().split()
         yline = f.readline().split()
 
-    # Form output dict
-    d = {}
-    d["geometry"] = geometry
-    d["problem"] = "poisson"
-    d["rmin"], d["rmax"], d["nr"] = float(xline[0]), float(xline[1]), int(xline[2]) + 1
-    d["zmin"], d["zmax"], d["nz"] = float(yline[0]), float(yline[1]), int(yline[2]) + 1
+    nr = int(xline[2]) + 1
+    nz = int(yline[2]) + 1
+
+    d: PoissonT7Data = {
+        "geometry": geometry,
+        "problem": "poisson",
+        "rmin": float(xline[0]),
+        "rmax": float(xline[1]),
+        "nr": nr,
+        "zmin": float(yline[0]),
+        "zmax": float(yline[1]),
+        "nz": nz,
+    }
 
     # Read and reshape
-    dat4 = np.loadtxt(t7file, skiprows=2)
-    ncol = len(labels)
-    dat4 = dat4.reshape(d["nz"], d["nr"], ncol)
+    dat = np.loadtxt(t7file, skiprows=2).reshape(nz, nr, 2)
 
-    for i, label in enumerate(labels):
-        d[label] = dat4[:, :, i].T
+    if type == "electric":
+        d["Er"] = dat[:, :, 0].T
+        d["Ez"] = dat[:, :, 1].T
+    else:
+        d["Br"] = dat[:, :, 0].T
+        d["Bz"] = dat[:, :, 1].T
 
     return d
 
@@ -504,11 +514,11 @@ def parse_sfo_segment(lines: list[str]) -> WallSegmentData:
 
     # key = value lines
 
-    info = parse_wall_segment_line1(lines[0])
+    info: dict[str, Any] = dict(parse_wall_segment_line1(lines[0]))
 
     inside = False
-    fields = None
-    units = None
+    fields: dict[str, list[float]] | None = None
+    units: dict[str, str] | None = None
 
     for L in lines[1:]:
         L = L.strip()
@@ -554,10 +564,10 @@ def parse_sfo_segment(lines: list[str]) -> WallSegmentData:
                 fields[name].append(x[i])
 
     # Exiting
-    for k, v in fields.items():
-        fields[k] = np.array(v)
+    assert fields is not None and units is not None, "No field table found"
+    wall = {k: np.array(v) for k, v in fields.items()}
 
-    return {"wall": fields, "info": info, "units": units}
+    return {"wall": wall, "info": info, "units": units}
 
 
 # _________________________________
@@ -589,12 +599,9 @@ def parse_sfo_beam_energy(
     for line in lines:
         line = line.strip()
         if line.startswith("V0"):
-            line = line.split("=")[-1]
-            line = line.strip()
-            line = line.split(" ")
-            data = line[0]
-            data = float(data)
-            unit = line[1]
+            parts = line.split("=")[-1].strip().split(" ")
+            data = float(parts[0])
+            unit = parts[1]
     d_vals["BeamEnergy"] = data
     d_units["BeamEnergy"] = unit
     return d_vals, d_units
@@ -650,13 +657,11 @@ def parse_simple_summary_line(
     """
     d_val = {}
     d_unit = {}
-    line = line.split("=")
-    if len(line) == 1:
+    parts = line.split("=")
+    if len(parts) == 1:
         return d_val, d_unit
-    key = line[0].strip()
-    val = line[-1]
-    val = val.strip()
-    val = val.split(" ")
+    key = parts[0].strip()
+    val = parts[-1].strip().split(" ")
     d_val[key] = float(val[0])
     if len(val) > 1:
         d_unit[key] = val[1]
@@ -690,8 +695,8 @@ def parse_sfo_summary_group_line(
     d_val = {}
     d_unit = {}
     if line.startswith("Field normalization"):
-        line = line.split("=")
-        val = line[-1]
+        parts = line.split("=")
+        val = parts[-1]
         val = val.strip()
         val = val.split(" ")
         d_val["Enorm"] = float(val[0])
@@ -699,8 +704,8 @@ def parse_sfo_summary_group_line(
         return d_val, d_unit
     # 'for the integration path from point Z1,R1 =     50.50000 cm,   0.00000 cm',
     if line.startswith("for the integration path"):
-        line = line.split("=")
-        val = line[-1]
+        parts = line.split("=")
+        val = parts[-1]
         val = val.strip()
         val = val.split(",")
         v1 = val[0].split(" ")
@@ -715,8 +720,8 @@ def parse_sfo_summary_group_line(
         return d_val, d_unit
     #  'to ending point                     Z2,R2 =     50.51000 cm,   0.00000 cm',
     if line.startswith("to ending point"):
-        line = line.split("=")
-        val = line[-1]
+        parts = line.split("=")
+        val = parts[-1]
         val = val.strip()
         val = val.split(",")
         v1 = val[0].split(" ")
@@ -731,11 +736,11 @@ def parse_sfo_summary_group_line(
         return d_val, d_unit
     if line.startswith("Beta "):
         # custom parse the beta line
-        line = line.split("=")
-        beta = line[1].strip()
+        parts = line.split("=")
+        beta = parts[1].strip()
         beta = beta.split(" ")
         beta = beta[0]
-        ke = line[-1]
+        ke = parts[-1]
         ke = ke.strip()
         ke = ke.split(" ")
         ke = ke[0]
@@ -747,11 +752,11 @@ def parse_sfo_summary_group_line(
     #   'Q    =  0.334933E+10      Shunt impedance =  2001715.397 MOhm/m',
     if line.startswith("Q "):
         # Q factor line
-        line = line.split("=")
-        v1 = line[1].strip()
+        parts = line.split("=")
+        v1 = parts[1].strip()
         v1 = v1.split(" ")
         v1 = v1[0]
-        v2 = line[-1]
+        v2 = parts[-1]
         v2 = v2.strip()
         v2 = v2.split(" ")
         v2 = v2[0]
@@ -763,11 +768,11 @@ def parse_sfo_summary_group_line(
     #          'Rs*Q =    81.364 Ohm                Z*T*T =  1956056.397 MOhm/m',
     if line.startswith("Rs*Q "):
         # Q factor line
-        line = line.split("=")
-        v1 = line[1].strip()
+        parts = line.split("=")
+        v1 = parts[1].strip()
         v1 = v1.split(" ")
         v1 = v1[0]
-        v2 = line[-1]
+        v2 = parts[-1]
         v2 = v2.strip()
         v2 = v2.split(" ")
         v2 = v2[0]
@@ -779,11 +784,11 @@ def parse_sfo_summary_group_line(
     # 'r/Q  =   134.323 Ohm  Wake loss parameter =      0.04044 V/pC',
     if line.startswith("r/Q "):
         # r/Q line
-        line = line.split("=")
-        v1 = line[1].strip()
+        parts = line.split("=")
+        v1 = parts[1].strip()
         v1 = v1.split(" ")
         v1 = v1[0]
-        v2 = line[-1]
+        v2 = parts[-1]
         v2 = v2.strip()
         v2 = v2.split(" ")
         v2 = v2[0]
@@ -795,8 +800,8 @@ def parse_sfo_summary_group_line(
     #  'Average magnetic field on the outer wall  =      16678.8 A/m, 0.337887 mW/cm^2',
     if line.startswith("Average magnetic "):
         # Average magnetic field line
-        line = line.split("=")
-        val = line[-1]
+        parts = line.split("=")
+        val = parts[-1]
         val = val.strip()
         val = val.split(",")
         v1 = val[0].split(" ")
@@ -807,13 +812,13 @@ def parse_sfo_summary_group_line(
     #  'Maximum H (at Z,R = 25.1487,18.4727)      =       41189. A/m, 2.06066 mW/cm^2',
     if line.startswith("Maximum H "):
         # Maximum H line
-        line = line.split("=")
-        val = line[1].strip()
+        parts = line.split("=")
+        val = parts[1].strip()
         val = val.split(",")
         v1 = val[0]
         v2 = val[1].split(")")
         v2 = v2[0]
-        v3 = line[-1]
+        v3 = parts[-1]
         v3 = v3.strip()
         v3 = v3.split(",")
         v3 = v3[0].split(" ")
@@ -828,13 +833,13 @@ def parse_sfo_summary_group_line(
     #  'Maximum E (at Z,R = 49.9969,0.624269)     =      41.1564 MV/m, 2.84161 Kilp.',
     if line.startswith("Maximum E "):
         # Maximum E line
-        line = line.split("=")
-        val = line[1].strip()
+        parts = line.split("=")
+        val = parts[1].strip()
         val = val.split(",")
         v1 = val[0]
         v2 = val[1].split(")")
         v2 = v2[0]
-        v3 = line[-1]
+        v3 = parts[-1]
         v3 = v3.strip()
         v3 = v3.split(",")
         v3 = v3[0].split(" ")

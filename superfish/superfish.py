@@ -484,11 +484,11 @@ class Superfish:
         >>> sf.run_cmd("automesh", "TEST.AM", timeout=1)
         """
         if self.use_container:
-            cmds = self.container_run_cmd(*cmds)
+            cmd = self.container_run_cmd(*cmds)
         else:
-            cmds = self.windows_run_cmd(*cmds)
+            cmd = self.windows_run_cmd(*cmds)
 
-        self.vprint(f"Running: {cmds}")
+        self.vprint(f"Running: {cmd}")
 
         logfile = os.path.join(self.path, "output.log")
 
@@ -501,11 +501,11 @@ class Superfish:
 
             with open(logfile, "a") as output:
                 P = subprocess.call(
-                    cmds, shell=True, stdout=output, stderr=output, cwd=cwd, **kwargs
+                    cmd, shell=True, stdout=output, stderr=output, cwd=cwd, **kwargs
                 )
         else:
             # Windows needs this
-            P = subprocess.run(cmds.split(), cwd=self.path, **kwargs)
+            P = subprocess.run(cmd.split(), cwd=self.path, **kwargs)
 
         return P
 
@@ -521,9 +521,9 @@ class Superfish:
         f = os.path.abspath(input_filePath)
 
         # Get basename. Should be upper case to be consistent with output files (that are always upper case)
-        _, fname = os.path.split(f)
+        self.original_path, fname = os.path.split(f)
         basename = os.path.splitext(fname)[0].upper()
-        self.input = dict(basename=basename)
+        self.input: dict[str, Any] = {"basename": basename}
 
         self.input["automesh"] = parsers.parse_automesh(f)
 

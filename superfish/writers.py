@@ -319,12 +319,12 @@ def write_poisson_t7(
 {ymin} {ymax} {ny - 1}"""
 
     if "Ez" in t7data:
-        keys = ["Er", "Ez"]
+        arrays = [t7data["Er"], t7data["Ez"]]
     else:
-        keys = ["Br", "Bz"]
+        arrays = [t7data["Br"], t7data["Bz"]]
 
     # Unroll the arrays
-    dat = np.array([t7data[f].reshape(nx * ny, order="F").T for f in keys]).T
+    dat = np.array([a.reshape(nx * ny, order="F").T for a in arrays]).T
 
     np.savetxt(filename, dat, header=header, comments="", fmt=fmt)
 

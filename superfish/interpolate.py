@@ -1,6 +1,6 @@
 import os
 from glob import glob
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, overload
 
 from beamphysics import FieldMesh
 
@@ -26,6 +26,33 @@ def get_t7(path: str) -> list[str]:
         Paths of the T7 files found.
     """
     return glob(os.path.join(path, "*T7"))
+
+
+@overload
+def interpolate2d(
+    sf: "Superfish",
+    zmin: float = ...,
+    zmax: float = ...,
+    nz: int = ...,
+    rmin: float = ...,
+    rmax: float = ...,
+    nr: int = ...,
+    return_fieldmesh: Literal[False] = ...,
+) -> FishT7Data | PoissonT7Data: ...
+
+
+@overload
+def interpolate2d(
+    sf: "Superfish",
+    zmin: float = ...,
+    zmax: float = ...,
+    nz: int = ...,
+    rmin: float = ...,
+    rmax: float = ...,
+    nr: int = ...,
+    *,
+    return_fieldmesh: Literal[True],
+) -> FieldMesh: ...
 
 
 def interpolate2d(
