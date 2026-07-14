@@ -6,18 +6,18 @@ build-backend = "setuptools.build_meta"
 name = "pySuperfish"
 description = "Python interface to Poisson Superfish"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = { file = "LICENSE" }
 dynamic = ["version"]
 dependencies = ["numpy", "matplotlib", "openpmd-beamphysics"]
 
 [project.optional-dependencies]
 docs = [
-    "mkdocs",
-    "mkdocs-material",
-    "mkdocs-jupyter",
-    "mkdocstrings[python]",
-    "ruff",
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocs-jupyter",
+  "mkdocstrings[python]",
+  "ruff",
 ]
 
 [project.urls]
