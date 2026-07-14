@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 import numpy as np
@@ -18,9 +17,7 @@ def parse_automesh(file: str) -> list[str]:
     list of str
         Lines of the file, with line endings preserved.
     """
-    if os.path.exists(file):
-        lines = open(file, "r").readlines()
-    return lines
+    return open(file, "r").readlines()
 
 
 def parse_sfo(filename: str, verbose: bool = False) -> dict[str, Any]:
