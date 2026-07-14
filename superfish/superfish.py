@@ -23,8 +23,11 @@ class Superfish:
         "PYSUPERFISH_SINGULARITY_IMAGE", "~/poisson-superfish_latest.sif"
     )
 
-    # Automatically detect the container method
-    if shutil.which("docker"):
+    if shutil.which("singularity") and os.path.exists(
+        os.path.expanduser(_singularity_image)
+    ):
+        _container_command = "singularity exec {singularity_image} {cmds}"
+    elif shutil.which("docker"):
         _container_command = (
             "docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}"
         )
