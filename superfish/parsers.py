@@ -1,19 +1,50 @@
-import numpy as np
 import os
+from typing import Any
+
+import numpy as np
 
 
-def parse_automesh(file):
+def parse_automesh(file: str) -> list[str]:
+    """
+    Read an automesh input file into lines.
+
+    Parameters
+    ----------
+    file : str
+        Path to the automesh (.AM) input file.
+
+    Returns
+    -------
+    list of str
+        Lines of the file, with line endings preserved.
+    """
     if os.path.exists(file):
         lines = open(file, "r").readlines()
     return lines
 
 
-def parse_sfo(filename, verbose=False):
+def parse_sfo(filename: str, verbose: bool = False) -> dict[str, Any]:
     """
     Master parser for the SFO file.
 
-    Returns the output dict.
+    Parameters
+    ----------
+    filename : str
+        Path to the SFO file.
+    verbose : bool
+        Print a message for groups that have no parser.
 
+    Returns
+    -------
+    dict
+        Parsed output with keys:
+
+        - ``wall_segments`` : list of dict, one per wall segment.
+        - ``summary`` : dict with ``data`` and ``units`` for the summary
+          quantities (frequency, Q, ...), if present.
+        - ``BeamEnergy`` : dict with ``data`` and ``units``, if present.
+        - ``header`` : dict of problem variables, descriptions, and comments.
+        - ``other`` : dict of unparsed groups, keyed by their raw type line.
     """
 
     groups = parse_sfo_into_groups(filename)
@@ -44,15 +75,25 @@ def parse_sfo(filename, verbose=False):
     return d
 
 
-def parse_sfo_into_groups(filename):
+def parse_sfo_into_groups(filename: str) -> list[dict[str, Any]]:
     """
-    Parses SFO file into groups according to separator that starts with:
-    '-------------------'
+    Parse an SFO file into groups.
 
-    Returns a list of dicts, with:
-        raw_type: the first line
-        lines: list of lines
+    Groups are delimited by separator lines that start with
+    ``-------------------``.
 
+    Parameters
+    ----------
+    filename : str
+        Path to the SFO file.
+
+    Returns
+    -------
+    list of dict
+        One dict per group, with keys:
+
+        - ``raw_type`` : str, the first line of the group.
+        - ``lines`` : list of str, the remaining lines.
     """
 
     with open(filename, "r") as f:
@@ -93,9 +134,24 @@ def parse_sfo_into_groups(filename):
     return groups
 
 
-def process_group(group, verbose=False):
+def process_group(group: dict[str, Any], verbose: bool = False) -> dict[str, Any]:
     """
-    processes a single output group dict into usable data.
+    Process a single output group dict into usable data.
+
+    Parameters
+    ----------
+    group : dict
+        Group dict with ``raw_type`` and ``lines`` keys, as returned by
+        :func:`parse_sfo_into_groups`.
+    verbose : bool
+        Print a message when no parser exists for the group type.
+
+    Returns
+    -------
+    dict
+        Parsed group with a ``type`` key identifying the group
+        (``summary``, ``wall_segment``, ``BeamEnergy``, or the raw type
+        line for unparsed groups) and type-dependent data keys.
     """
 
     rtype = group["raw_type"]
@@ -134,28 +190,40 @@ def process_group(group, verbose=False):
 # T7 files
 
 
-def parse_fish_t7(t7file, geometry="cylindrical"):
+def parse_fish_t7(t7file: str, geometry: str = "cylindrical") -> dict[str, Any]:
     """
-    Parses a T7 file. The T7 header should have:
+    Parse a Fish T7 file.
 
-    xmin(cm), xmax(cm), nx-1
-    freq(MHz)
-    ymin(cm), ymax(cm), ny-1
-    4 columns of data: Ez, Er, E, Hphi
+    The T7 header should have::
+
+        xmin(cm), xmax(cm), nx-1
+        freq(MHz)
+        ymin(cm), ymax(cm), ny-1
+
+    followed by 4 columns of data: Ez, Er, E, Hphi.
 
     TODO: Poisson problems, detect rectangular or cylindrical coordinates
 
-    Returns a dict with:
-        rmin
-        rmax
-        nr
-        zmin
-        zmax
-        nz
-        freq: frequency in MHz
-        data: 2D array of shape (nr, nz)
+    Parameters
+    ----------
+    t7file : str
+        Path to the T7 file.
+    geometry : str
+        Problem geometry. Only ``"cylindrical"`` is currently handled.
 
+    Returns
+    -------
+    dict
+        Parsed data with keys:
 
+        - ``geometry`` : str
+        - ``problem`` : ``"fish"``
+        - ``zmin``, ``zmax`` : float, z extent in cm.
+        - ``nz`` : int, number of z points.
+        - ``rmin``, ``rmax`` : float, radial extent in cm.
+        - ``nr`` : int, number of radius points.
+        - ``freq`` : float, frequency in MHz.
+        - ``Ez``, ``Er``, ``E``, ``Hphi`` : ndarray of shape (nr, nz).
     """
 
     # Read header
@@ -189,31 +257,45 @@ def parse_fish_t7(t7file, geometry="cylindrical"):
     return d
 
 
-def parse_poisson_t7(t7file, type="electric", geometry="cylindrical"):
+def parse_poisson_t7(
+    t7file: str,
+    type: str = "electric",
+    geometry: str = "cylindrical",
+) -> dict[str, Any]:
     """
-    Parses a T7 file. The T7 header should have:
+    Parse a Poisson T7 file.
 
-    xmin(cm), xmax(cm), nx-1
-    ymin(cm), ymax(cm), ny-1
+    The T7 header should have::
 
-    For type=='electric':
-        2 columns of data: Er, Ez
-        Units are in V/cm
+        xmin(cm), xmax(cm), nx-1
+        ymin(cm), ymax(cm), ny-1
 
-    For type=='magnetic':
-        2 columns of data: Br, Bz
-        Units are G
+    followed by 2 columns of data:
 
-    Returns a dict with:
-        rmin
-        rmax
-        nr
-        ymin
-        ymax
-        ny
-        data: 2D array of shape (nx, ny)
+    - ``type == "electric"`` : Er, Ez in V/cm.
+    - ``type == "magnetic"`` : Br, Bz in G.
 
+    Parameters
+    ----------
+    t7file : str
+        Path to the T7 file.
+    type : {"electric", "magnetic"}
+        Type of field data in the file.
+    geometry : str
+        Problem geometry. Only ``"cylindrical"`` is currently handled.
 
+    Returns
+    -------
+    dict
+        Parsed data with keys:
+
+        - ``geometry`` : str
+        - ``problem`` : ``"poisson"``
+        - ``zmin``, ``zmax`` : float, z extent in cm.
+        - ``nz`` : int, number of z points.
+        - ``rmin``, ``rmax`` : float, radial extent in cm.
+        - ``nr`` : int, number of radius points.
+        - ``Er``, ``Ez`` or ``Br``, ``Bz`` : ndarray of shape (nr, nz).
     """
     assert geometry == "cylindrical", "TODO: other geometries"
 
@@ -256,15 +338,29 @@ def parse_poisson_t7(t7file, type="electric", geometry="cylindrical"):
 # Header
 
 
-def parse_header_variable(line):
+def parse_header_variable(line: str) -> tuple[str, int | float, str, bool]:
     """
-    Parses a line that follows:
+    Parse a single variable line from the SFO header table.
 
-    Variable Code         Value     Description
+    The line follows the table header::
 
-    Returns:
-        key, value, description, in_automesh
+        Variable Code         Value     Description
 
+    Parameters
+    ----------
+    line : str
+        Line from the header table.
+
+    Returns
+    -------
+    key : str
+        Variable name.
+    value : int or float
+        Variable value.
+    description : str
+        Variable description.
+    in_automesh : bool
+        True if the variable was set in the automesh input (code ``A``).
     """
     x = line.split()
 
@@ -290,9 +386,24 @@ def parse_header_variable(line):
     return key, val, descrip, in_automesh
 
 
-def parse_header_lines(lines):
+def parse_header_lines(lines: list[str]) -> dict[str, Any]:
     """
-    Parses the header lines
+    Parse the SFO header lines.
+
+    Parameters
+    ----------
+    lines : list of str
+        Lines of the header group.
+
+    Returns
+    -------
+    dict
+        Parsed header with keys:
+
+        - ``variable`` : dict of variable name to value.
+        - ``description`` : dict of variable name to description.
+        - ``in_automesh`` : dict of variable name to bool.
+        - ``comments`` : str, lines preceding the variable table.
     """
 
     header = "Variable Code         Value     Description"
@@ -330,9 +441,22 @@ def parse_header_lines(lines):
 # Wall segments
 
 
-def parse_wall_segment_line1(line):
+def parse_wall_segment_line1(line: str) -> dict[str, int]:
     """
-    helper parse_sfo_segment
+    Parse the first line of a wall segment group.
+
+    Helper for :func:`parse_sfo_segment`.
+
+    Parameters
+    ----------
+    line : str
+        Line of the form
+        ``Power and fields on wall segment 1   K,L = 1,2 to 3,4``.
+
+    Returns
+    -------
+    dict
+        Keys ``segment_number``, ``K_beg``, ``L_beg``, ``K_end``, ``L_end``.
     """
     d = {}
     ix, x = line.split("segment")[1].split(" K,L =")
@@ -345,10 +469,27 @@ def parse_wall_segment_line1(line):
     return d
 
 
-def parse_sfo_segment(lines):
+def parse_sfo_segment(lines: list[str]) -> dict[str, Any]:
     """
-    Parses lines that start with:
-        'Power and fields on wall segment'
+    Parse a wall segment group.
+
+    The group starts with a line like
+    ``Power and fields on wall segment``.
+
+    Parameters
+    ----------
+    lines : list of str
+        Lines of the wall segment group, including the first (type) line.
+
+    Returns
+    -------
+    dict
+        Parsed segment with keys:
+
+        - ``wall`` : dict of column name to ndarray of values.
+        - ``info`` : dict of segment info (segment number, K/L range, and
+          any ``key = value`` lines).
+        - ``units`` : dict of column name to unit string.
     """
 
     # key = value lines
@@ -413,7 +554,26 @@ def parse_sfo_segment(lines):
 # Summary
 
 
-def parse_sfo_beam_energy(lines):
+def parse_sfo_beam_energy(
+    lines: list[str],
+) -> tuple[dict[str, float], dict[str, str]]:
+    """
+    Parse the beam energy group.
+
+    Extracts the ``V0`` value from the field normalization group.
+
+    Parameters
+    ----------
+    lines : list of str
+        Lines of the group.
+
+    Returns
+    -------
+    values : dict
+        ``{"BeamEnergy": value}``.
+    units : dict
+        ``{"BeamEnergy": unit}``.
+    """
     d_vals = {}
     d_units = {}
     for line in lines:
@@ -430,8 +590,24 @@ def parse_sfo_beam_energy(lines):
     return d_vals, d_units
 
 
-def parse_sfo_summary_group(lines):
-    """ """
+def parse_sfo_summary_group(
+    lines: list[str],
+) -> tuple[dict[str, float], dict[str, str]]:
+    """
+    Parse the summary group lines.
+
+    Parameters
+    ----------
+    lines : list of str
+        Lines of the summary group.
+
+    Returns
+    -------
+    values : dict
+        Summary quantity name to value.
+    units : dict
+        Summary quantity name to unit string.
+    """
     d_vals = {}
     d_units = {}
     for line in lines:
@@ -444,8 +620,24 @@ def parse_sfo_summary_group(lines):
     return d_vals, d_units
 
 
-def parse_simple_summary_line(line):
-    # deal with simple line with one key and one value
+def parse_simple_summary_line(
+    line: str,
+) -> tuple[dict[str, float], dict[str, str]]:
+    """
+    Parse a simple summary line with one key and one value.
+
+    Parameters
+    ----------
+    line : str
+        Line of the form ``key = value [unit]``.
+
+    Returns
+    -------
+    values : dict
+        Key to value. Empty if the line has no ``=``.
+    units : dict
+        Key to unit string (empty string if the line has no unit).
+    """
     d_val = {}
     d_unit = {}
     line = line.split("=")
@@ -463,7 +655,28 @@ def parse_simple_summary_line(line):
     return d_val, d_unit
 
 
-def parse_sfo_summary_group_line(line):
+def parse_sfo_summary_group_line(
+    line: str,
+) -> tuple[dict[str, float], dict[str, str]]:
+    """
+    Parse a single summary group line.
+
+    Handles the special multi-value lines (field normalization,
+    integration path, beta, Q, Rs*Q, r/Q, average/maximum fields);
+    anything else falls back to :func:`parse_simple_summary_line`.
+
+    Parameters
+    ----------
+    line : str
+        Summary line.
+
+    Returns
+    -------
+    values : dict
+        Quantity name to value.
+    units : dict
+        Quantity name to unit string.
+    """
     d_val = {}
     d_unit = {}
     if line.startswith("Field normalization"):

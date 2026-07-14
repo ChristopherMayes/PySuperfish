@@ -1,44 +1,81 @@
 import os
 from glob import glob
+from typing import TYPE_CHECKING, Any
 
 from beamphysics import FieldMesh
 
 from superfish.parsers import parse_fish_t7, parse_poisson_t7
 
+if TYPE_CHECKING:
+    from superfish.superfish import Superfish
 
-def get_t7(path):
+
+def get_t7(path: str) -> list[str]:
     """
-    Returns a list of T7 files in path
+    Find T7 files in a directory.
+
+    Parameters
+    ----------
+    path : str
+        Directory to search.
+
+    Returns
+    -------
+    list of str
+        Paths of the T7 files found.
     """
     return glob(os.path.join(path, "*T7"))
 
 
 def interpolate2d(
-    sf, zmin=-1000, zmax=1000, nz=100, rmin=0, rmax=0, nr=1, return_fieldmesh=False
-):
+    sf: "Superfish",
+    zmin: float = -1000,
+    zmax: float = 1000,
+    nz: int = 100,
+    rmin: float = 0,
+    rmax: float = 0,
+    nr: int = 1,
+    return_fieldmesh: bool = False,
+) -> dict[str, Any] | FieldMesh:
     """
+    Interpolate the solved field onto a grid using SF7.
 
-    Runs SF7.EXE on a Superfish object sf, requesting interpolating data, and reads the Parmela T7 file.
+    Runs SF7 on a Superfish object, requesting interpolating data, and
+    reads the resulting Parmela T7 file.
 
-    Units are in the input units of the program.
+    SF7 automatically adjusts the bounds if they are requested outside of
+    the computational domain.
 
-    Labels will label the output columns. The user must know what these are from the problem.
+    TODO: detect the column labels from the SF object
 
-    TODO: detect these from SF object
+    Parameters
+    ----------
+    sf : Superfish
+        Superfish object that has been run.
+    zmin, zmax : float
+        z extent of the grid, in the input units of the program.
+    nz : int
+        Number of z points.
+    rmin, rmax : float
+        Radial extent of the grid, in the input units of the program.
+    nr : int
+        Number of radius points.
+    return_fieldmesh : bool
+        Return an openPMD-beamphysics FieldMesh instead of a t7data dict.
 
-    SF7 automatically adjusts the bounds if they are requested outside of the computational domain.
+    Returns
+    -------
+    dict or FieldMesh
+        If ``return_fieldmesh`` is False, a t7data dict with keys:
 
-    Returns a dict with:
-        rmin: minimum radius in cm
-        rmax: maximum radius in cm
-        nr:   number of radius points
-        zmin: minimum z in cm
-        zmax: maximum z in cm
-        nz:   number of z points
-        freq: frequency in MHz
-        data: 2D array of shape (nr, nz)
+        - ``rmin``, ``rmax`` : float, radial extent in cm.
+        - ``nr`` : int, number of radius points.
+        - ``zmin``, ``zmax`` : float, z extent in cm.
+        - ``nz`` : int, number of z points.
+        - ``freq`` : float, frequency in MHz (fish problems).
+        - field components : ndarray of shape (nr, nz).
 
-
+        Otherwise, an openPMD-beamphysics FieldMesh.
     """
 
     problem = sf.problem

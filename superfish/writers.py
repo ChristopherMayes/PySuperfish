@@ -1,4 +1,5 @@
 import warnings
+from typing import Any
 
 import numpy as np
 import scipy.constants
@@ -7,37 +8,56 @@ mu_0 = scipy.constants.mu_0
 
 
 def fish_externalfield_data(
-    t7data,
-    eleAnchorPt="beginning",
-    fieldScale=1,
-    RFphase=0,
-    z_offset=0,
-    name=None,
-    normalize_by_Ez0=False,
-):
+    t7data: dict[str, Any],
+    eleAnchorPt: str = "beginning",
+    fieldScale: float = 1,
+    RFphase: float = 0,
+    z_offset: float = 0,
+    name: str | None = None,
+    normalize_by_Ez0: bool = False,
+) -> dict[str, dict[str, Any]]:
     """
-    Input:
-        t7data dict from a parsed T7 file. This is in the native Superfish units.
+    Convert Fish t7data to openPMD external field data.
 
-    Superfish fields oscillate as:
+    .. deprecated::
+        Use direct parsing with openPMD-beamphysics instead.
+
+    Superfish fields oscillate as::
+
         Er, Ez ~ cos(wt)
         Hphi   ~ -sin(wt)
 
+    For complex fields oscillating as e^-iwt::
 
-    For complex fields oscillating as e^-iwt
-
-        Re(Ex*e^-iwt)   ~ cos
+        Re(Ex*e^-iwt)  ~ cos
         Re(-iB*e^-iwt) ~ -sin
-    and therefore B = -i * mu_0 * H_phi is the complex magnetic field in Tesla
 
-    Output:
-        dict with dicts:
-            attrs
-            components
+    and therefore B = -i * mu_0 * H_phi is the complex magnetic field in
+    Tesla.
 
-    that are ready to be written to an HDF5 file.
+    Parameters
+    ----------
+    t7data : dict
+        Parsed T7 data in the native Superfish units, as returned by
+        :func:`superfish.parsers.parse_fish_t7`.
+    eleAnchorPt : {"beginning", "center", "end"}
+        Element anchor point attribute.
+    fieldScale : float
+        Unused.
+    RFphase : float
+        RF phase attribute.
+    z_offset : float
+        Offset added to the grid origin in z, in meters.
+    name : str, optional
+        Name attribute.
+    normalize_by_Ez0 : bool
+        Normalize the fields by the maximum on-axis Ez.
 
-
+    Returns
+    -------
+    dict
+        Keys ``attrs`` and ``components``, ready to be written to an HDF5
+        file.
     """
     warnings.warn(
         "fish_externalfield_data should be replaced by direct parsing using openPMD-beamphyics",
@@ -102,26 +122,40 @@ def fish_externalfield_data(
 
 
 def poisson_externalfield_data(
-    t7data,
-    eleAnchorPt="beginning",
-    fieldScale=1,
-    type="electric",
-    z_offset=0,
-    name=None,
-    normalize_by_fz0=False,
-):
+    t7data: dict[str, Any],
+    eleAnchorPt: str = "beginning",
+    fieldScale: float = 1,
+    type: str = "electric",
+    z_offset: float = 0,
+    name: str | None = None,
+    normalize_by_fz0: bool = False,
+) -> dict[str, dict[str, Any]]:
     """
-    Input:
-        t7data dict from a parsed T7 file. This is in the native Superfish units.
+    Convert Poisson t7data to openPMD external field data.
 
-    Output:
-        dict with dicts:
-            attrs
-            components
+    Parameters
+    ----------
+    t7data : dict
+        Parsed T7 data in the native Superfish units, as returned by
+        :func:`superfish.parsers.parse_poisson_t7`.
+    eleAnchorPt : {"beginning", "center", "end"}
+        Element anchor point attribute.
+    fieldScale : float
+        Unused.
+    type : {"electric", "magnetic"}
+        Type of field data in ``t7data``.
+    z_offset : float
+        Offset added to the grid origin in z, in meters.
+    name : str, optional
+        Name attribute.
+    normalize_by_fz0 : bool
+        Normalize the fields by the maximum on-axis z field.
 
-    that are ready to be written to an HDF5 file.
-
-
+    Returns
+    -------
+    dict
+        Keys ``attrs`` and ``components``, ready to be written to an HDF5
+        file.
     """
 
     attrs = {}
@@ -194,13 +228,32 @@ def poisson_externalfield_data(
     return dict(attrs=attrs, components=components)
 
 
-def write_fish_t7(filename, t7data, fmt="%10.8e"):
+def write_fish_t7(
+    filename: str,
+    t7data: dict[str, Any],
+    fmt: str = "%10.8e",
+) -> str:
     """
-    Writes a T7 file from FISH t7data dict.
+    Write a T7 file from a FISH t7data dict.
 
+    Parameters
+    ----------
+    filename : str
+        Path of the T7 file to write.
+    t7data : dict
+        Parsed T7 data, as returned by
+        :func:`superfish.parsers.parse_fish_t7`.
+    fmt : str
+        Number format for the data columns.
 
-    See:
-        superfish.parsers.parse_fish_t7
+    Returns
+    -------
+    str
+        The filename written to.
+
+    See Also
+    --------
+    superfish.parsers.parse_fish_t7
     """
 
     # Collect these
@@ -224,13 +277,32 @@ def write_fish_t7(filename, t7data, fmt="%10.8e"):
     return filename
 
 
-def write_poisson_t7(filename, t7data, fmt="%10.8e"):
+def write_poisson_t7(
+    filename: str,
+    t7data: dict[str, Any],
+    fmt: str = "%10.8e",
+) -> str:
     """
-    Writes a T7 file from POISSON t7data dict.
+    Write a T7 file from a POISSON t7data dict.
 
+    Parameters
+    ----------
+    filename : str
+        Path of the T7 file to write.
+    t7data : dict
+        Parsed T7 data, as returned by
+        :func:`superfish.parsers.parse_poisson_t7`.
+    fmt : str
+        Number format for the data columns.
 
-    See:
-        superfish.parsers.parse_poisson_t7
+    Returns
+    -------
+    str
+        The filename written to.
+
+    See Also
+    --------
+    superfish.parsers.parse_poisson_t7
     """
 
     # Collect these

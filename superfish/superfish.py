@@ -1,16 +1,41 @@
-from . import parsers
-from .plot import plot_wall
-from .interpolate import interpolate2d
-
 import os
 import platform
+import shutil
 import subprocess
 import tempfile
 from time import time
-import shutil
+from typing import TYPE_CHECKING, Any
+
+from . import parsers
+from .interpolate import interpolate2d
+from .plot import plot_wall
+
+if TYPE_CHECKING:
+    from beamphysics import FieldMesh
 
 
 class Superfish:
+    """
+    Interface to the Poisson Superfish programs.
+
+    Manages a working directory, runs the Poisson Superfish programs
+    (natively on Windows, or through a container elsewhere), and parses
+    their output.
+
+    Attributes
+    ----------
+    input : dict
+        Input data with ``basename`` and ``automesh`` (lines) keys.
+    output : dict
+        Parsed output, filled by :meth:`load_output`.
+    path : str
+        Working directory where the programs run.
+    use_container : bool
+        Whether commands run through a container.
+    container_method : str or None
+        Selected container orchestration method.
+    """
+
     # Class attributes for the container. The image tag and Singularity .sif
     # path can be overridden via the PYSUPERFISH_CONTAINER_IMAGE /
     # PYSUPERFISH_SINGULARITY_IMAGE environment variables, which build.sh
@@ -34,13 +59,17 @@ class Superfish:
     }
 
     @classmethod
-    def _detect_container_method(cls):
+    def _detect_container_method(cls) -> str | None:
         """
         Pick a container method based on the available executables.
 
         Prefers Singularity when its image file already exists, then Docker,
         then Shifter, then Singularity even without a pre-built image.
-        Returns None if no method is available.
+
+        Returns
+        -------
+        str or None
+            The detected method name, or None if no method is available.
         """
         if shutil.which("singularity") and os.path.exists(
             os.path.expanduser(cls._singularity_image)
@@ -55,7 +84,7 @@ class Superfish:
         return None
 
     @property
-    def container_command(self):
+    def container_command(self) -> str | None:
         """Command template for the selected container method, or None."""
         if self.container_method is None:
             return None
@@ -63,15 +92,15 @@ class Superfish:
 
     def __init__(
         self,
-        automesh=None,
-        problem="fish",
-        use_tempdir=True,
-        use_container="auto",
-        container_method=None,
-        interactive=False,
-        workdir=None,
-        verbose=True,
-    ):
+        automesh: str | None = None,
+        problem: str = "fish",
+        use_tempdir: bool = True,
+        use_container: str | bool = "auto",
+        container_method: str | None = None,
+        interactive: bool = False,
+        workdir: str | None = None,
+        verbose: bool = True,
+    ) -> None:
         """
         Poisson-Superfish object
 
@@ -147,28 +176,53 @@ class Superfish:
             self.use_container = use_container
 
     @property
-    def basename(self):
+    def basename(self) -> str:
+        """Base name of the problem, from the automesh file name."""
         return self.input["basename"]
 
     @property
-    def automesh_name(self):
+    def automesh_name(self) -> str:
+        """Name of the automesh input file, ``<basename>.AM``."""
         return self.basename + ".AM"
 
-    def param(self, key):
+    def param(self, key: str) -> int | float:
         """
-        Parameters (Variables and Constants) from the readback in the SFO file.
+        Look up a parameter from the readback in the SFO file.
+
+        Parameters
+        ----------
+        key : str
+            Variable or Constant name, e.g. ``"CONV"``.
+
+        Returns
+        -------
+        int or float
+            The parameter value.
         """
         return self.output["sfo"]["header"]["variable"][key]
 
-    def param_info(self, key):
+    def param_info(self, key: str) -> str:
         """
-        Returns the description of a paramater
+        Look up the description of a parameter.
+
+        Parameters
+        ----------
+        key : str
+            Variable or Constant name, e.g. ``"CONV"``.
+
+        Returns
+        -------
+        str
+            The parameter description.
         """
         return self.output["sfo"]["header"]["description"][key]
 
-    def configure(self):
+    def configure(self) -> None:
         """
-        Configures paths to run in.
+        Configure the working directory to run in.
+
+        Creates a temporary directory when ``use_tempdir`` is set;
+        otherwise runs in ``workdir`` or in place.
         """
 
         # Set paths
@@ -189,16 +243,47 @@ class Superfish:
 
         self.configured = True
 
-    def fieldmesh(self, zmin=-100, zmax=100, nz=0, dz=0, rmin=0, rmax=100, nr=0, dr=0):
+    def fieldmesh(
+        self,
+        zmin: float = -100,
+        zmax: float = 100,
+        nz: int = 0,
+        dz: float = 0,
+        rmin: float = 0,
+        rmax: float = 100,
+        nr: int = 0,
+        dr: float = 0,
+    ) -> "FieldMesh":
         """
-        Interpolates field over a grid. Similar to .interpolate,
-        but input units are in meters.
+        Interpolate the field over a grid, returning a FieldMesh.
+
+        Similar to :meth:`interpolate`, but input units are in meters.
 
         Various combinations of the spacings and grid point numbers
-        nz, dz, nr, nz can be used.
-        If nether is specified, a default of 100 grid points will be used.
+        ``nz``, ``dz``, ``nr``, ``dr`` can be used. If neither is
+        specified, a default of 100 grid points will be used.
 
-        Returns an openPMD-beamphysics FieldMesh object
+        Parameters
+        ----------
+        zmin, zmax : float
+            z extent of the grid, in meters.
+        nz : int
+            Number of z points.
+        dz : float
+            z spacing, in meters. Overrides ``zmax`` when given with
+            ``nz``.
+        rmin, rmax : float
+            Radial extent of the grid, in meters.
+        nr : int
+            Number of radius points.
+        dr : float
+            Radial spacing, in meters. Overrides ``rmax`` when given with
+            ``nr``.
+
+        Returns
+        -------
+        FieldMesh
+            An openPMD-beamphysics FieldMesh object.
         """
 
         conv = self.param("CONV")
@@ -236,9 +321,34 @@ class Superfish:
 
         return FM
 
-    def interpolate(self, zmin=-1000, zmax=1000, nz=100, rmin=0, rmax=0, nr=1):
+    def interpolate(
+        self,
+        zmin: float = -1000,
+        zmax: float = 1000,
+        nz: int = 100,
+        rmin: float = 0,
+        rmax: float = 0,
+        nr: int = 1,
+    ) -> dict[str, Any]:
         """
-        Interpolates field over a grid.
+        Interpolate the field over a grid.
+
+        Parameters
+        ----------
+        zmin, zmax : float
+            z extent of the grid, in the problem's input units.
+        nz : int
+            Number of z points.
+        rmin, rmax : float
+            Radial extent of the grid, in the problem's input units.
+        nr : int
+            Number of radius points.
+
+        Returns
+        -------
+        dict
+            t7data dict, as returned by
+            :func:`superfish.interpolate.interpolate2d`.
         """
 
         t7data = interpolate2d(
@@ -247,10 +357,12 @@ class Superfish:
 
         return t7data
 
-    def run(self):
+    def run(self) -> None:
         """
-        Writes input, runs autofish, and loads output
+        Write input, run the problem, and load the output.
 
+        Runs ``autofish`` for fish problems, or the
+        ``automesh``/``poisson``/``sfo`` chain for poisson problems.
         """
 
         assert self.configured, "not configured to run"
@@ -271,12 +383,26 @@ class Superfish:
 
         self.load_output()
 
-    def container_run_cmd(self, *args):
+    def container_run_cmd(self, *args: str) -> str:
         """
-        Returns the run command string for the container.
+        Form the run command string for the container.
 
         The container data should live in its /data/ folder.
 
+        Parameters
+        ----------
+        *args : str
+            Program name and arguments, e.g. ``("automesh", "TEST.AM")``.
+
+        Returns
+        -------
+        str
+            The full shell command.
+
+        Raises
+        ------
+        RuntimeError
+            If no container method is available.
         """
 
         cmds = " ".join(args)
@@ -306,7 +432,20 @@ class Superfish:
 
         return cmd0 + cmd
 
-    def windows_run_cmd(self, *args):
+    def windows_run_cmd(self, *args: str) -> str:
+        """
+        Form the run command string for the native Windows executables.
+
+        Parameters
+        ----------
+        *args : str
+            Program name and arguments, e.g. ``("automesh", "TEST.AM")``.
+
+        Returns
+        -------
+        str
+            The full command.
+        """
         cmd = os.path.join(self._windows_exe_path, args[0].upper() + ".EXE")
 
         assert os.path.exists(cmd), f"EXE does not exist: {cmd}"
@@ -318,13 +457,30 @@ class Superfish:
 
         return cmd
 
-    def run_cmd(self, *cmds, **kwargs):
+    def run_cmd(self, *cmds: str, **kwargs: Any) -> int | subprocess.CompletedProcess:
         r"""
-        Runs a command in self.
+        Run a Superfish program in the working directory.
 
-        Example:
-            .run_cmd(['C:\LANL\AUTOMESH.EXE', 'TEST.AM'], timeout=1)
+        Output is appended to ``output.log`` in the working directory when
+        running through a container.
 
+        Parameters
+        ----------
+        *cmds : str
+            Program name and arguments, e.g. ``("automesh", "TEST.AM")``.
+        **kwargs
+            Passed to ``subprocess.call`` (container) or
+            ``subprocess.run`` (native Windows).
+
+        Returns
+        -------
+        int or subprocess.CompletedProcess
+            The return code (container), or the completed process (native
+            Windows).
+
+        Examples
+        --------
+        >>> sf.run_cmd("automesh", "TEST.AM", timeout=1)
         """
         if self.use_container:
             cmds = self.container_run_cmd(*cmds)
@@ -352,15 +508,15 @@ class Superfish:
 
         return P
 
-        ## Actual run
-        # P = subprocess.run(cmds, shell=True, cwd=self.path, **kwargs)
-        #
-        # print(P)
-        #
-        # return P
+    def load_input(self, input_filePath: str) -> None:
+        """
+        Load an automesh input file.
 
-    def load_input(self, input_filePath):
-        """ """
+        Parameters
+        ----------
+        input_filePath : str
+            Path to the automesh (.AM) file.
+        """
         f = os.path.abspath(input_filePath)
 
         # Get basename. Should be upper case to be consistent with output files (that are always upper case)
@@ -370,9 +526,9 @@ class Superfish:
 
         self.input["automesh"] = parsers.parse_automesh(f)
 
-    def load_output(self):
+    def load_output(self) -> None:
         """
-        Loads SFO output file
+        Load and parse the SFO output file into ``.output["sfo"]``.
         """
 
         self.output = {}
@@ -387,7 +543,18 @@ class Superfish:
 
         self.vprint("Parsed output:", sfofile)
 
-    def plot_wall(self, units="original", **kwargs):
+    def plot_wall(self, units: str = "original", **kwargs: Any) -> None:
+        """
+        Plot the problem geometry from the parsed wall segments.
+
+        Parameters
+        ----------
+        units : {"original", "cm"}
+            Units for the plot axes. ``"cm"`` converts using the problem's
+            CONV parameter.
+        **kwargs
+            Passed to :func:`superfish.plot.plot_wall`.
+        """
         if units == "original":
             conv = 1
         elif units == "cm":
@@ -397,9 +564,9 @@ class Superfish:
 
         plot_wall(self.output["sfo"]["wall_segments"], conv=conv, **kwargs)
 
-    def write_input(self):
+    def write_input(self) -> None:
         """
-        Writes automesh input from .input['automesh']
+        Write the automesh input file from ``.input["automesh"]``.
         """
 
         file = os.path.join(self.path, self.input["basename"] + ".AM")
@@ -407,12 +574,12 @@ class Superfish:
             for line in self.input["automesh"]:
                 f.write(line)
 
-    def vprint(self, *args):
-        """verbose print"""
+    def vprint(self, *args: Any) -> None:
+        """Print only when verbose is enabled."""
         if self.verbose:
             print(*args)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         memloc = hex(id(self))
         if self.configured:
             return f"<Superfish configured to run in {self.path}>"

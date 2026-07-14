@@ -1,26 +1,63 @@
-import matplotlib.pyplot as plt
-import matplotlib
 from copy import copy
+from typing import Any
 
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.colors import Colormap
+from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import numpy as np
 
+def get_cmap0() -> Colormap:
+    """
+    Get the default color map.
 
-def get_cmap0():
-    # Get a default color map
+    Returns
+    -------
+    matplotlib.colors.Colormap
+        The ``plasma`` color map with values below the range drawn white.
+    """
     cmap0 = copy(plt.get_cmap("plasma"))
     cmap0.set_under("white")
     return cmap0
 
 
-def add_t7data_to_axes(t7data, ax, field="E", cmap=None, vmin=1e-19, scale=1):
+def add_t7data_to_axes(
+    t7data: dict[str, Any],
+    ax: Axes,
+    field: str = "E",
+    cmap: Colormap | None = None,
+    vmin: float = 1e-19,
+    scale: float = 1,
+) -> Axes:
     """
-    Adds a field from t7data to an axes ax.
+    Add a field image from t7data to an axes.
 
-    scale will scale the extents, to account for different units.
-    Example: scale=10 will place this data in cm on a plot in mm
+    Parameters
+    ----------
+    t7data : dict
+        Parsed T7 data, as returned by
+        :func:`superfish.parsers.parse_fish_t7` or
+        :func:`superfish.parsers.parse_poisson_t7`.
+    ax : matplotlib.axes.Axes
+        Axes to draw on.
+    field : str
+        Field to plot. ``"E"`` or ``"B"`` magnitudes are computed from the
+        r and z components when not present in ``t7data``.
+    cmap : matplotlib.colors.Colormap, optional
+        Color map. Defaults to :func:`get_cmap0`.
+    vmin : float
+        Minimum value for the color scale.
+    scale : float
+        Scales the extents, to account for different units.
+        Example: ``scale=10`` will place this data in cm on a plot in mm.
 
+    Returns
+    -------
+    matplotlib.axes.Axes
+        The axes that was drawn on.
     """
 
     extent = [t7data[k] * scale for k in ("zmin", "zmax", "rmin", "rmax")]
@@ -38,24 +75,38 @@ def add_t7data_to_axes(t7data, ax, field="E", cmap=None, vmin=1e-19, scale=1):
     return ax
 
 
-def perp(x, y, scale=1):
+def perp(
+    x: np.ndarray,
+    y: np.ndarray,
+    scale: float | np.ndarray = 1,
+) -> tuple[np.ndarray, np.ndarray]:
     """
-    Calculates perpendicular lines.
+    Calculate lines perpendicular to the segments of a polyline.
 
-    Returns two np.array: PX, PY
-        where each has the shape: (len(x)-1, 2)
+    Parameters
+    ----------
+    x, y : ndarray
+        Coordinates of the polyline vertices.
+    scale : float or ndarray
+        Length of the perpendicular lines. An array gives a per-segment
+        length.
 
-    To test:
+    Returns
+    -------
+    PX, PY : ndarray
+        Endpoint coordinates of the perpendicular lines, each of shape
+        ``(len(x) - 1, 2)``.
 
-        X = np.array([1,2,3,4,8])
-        Y = np.array([4,5,6,9,10])
-
-        fig, ax = plt.subplots()
-        ax.set_aspect('equal')
-        ax.plot(X, Y)
-        for i in range(len(PX)):
-           ax.plot(PX[i,:], PY[i,:])
-
+    Examples
+    --------
+    >>> X = np.array([1, 2, 3, 4, 8])
+    >>> Y = np.array([4, 5, 6, 9, 10])
+    >>> PX, PY = perp(X, Y)
+    >>> fig, ax = plt.subplots()
+    >>> ax.set_aspect('equal')
+    >>> ax.plot(X, Y)
+    >>> for i in range(len(PX)):
+    ...    ax.plot(PX[i, :], PY[i, :])
     """
     dx = np.diff(x)
     dy = np.diff(y)
@@ -71,16 +122,37 @@ def perp(x, y, scale=1):
 
 
 def add_wall_segment_to_axes(
-    seg, ax, perp_scale=0, max_field=1, field="E", cmap=None, conv=1
-):
+    seg: dict[str, Any],
+    ax: Axes,
+    perp_scale: float = 0,
+    max_field: float = 1,
+    field: str = "E",
+    cmap: Colormap | None = None,
+    conv: float = 1,
+) -> None:
     """
-    Adds wall segments to axes.
+    Add a wall segment to an axes.
 
-    If perp_scal >0, the field strength will be drawn as a perpendicular line.
-    max_field and the color map are needed to color these
-
-    conv is the unit conversion factor used by Superfish.
-
+    Parameters
+    ----------
+    seg : dict
+        Parsed wall segment, as returned by
+        :func:`superfish.parsers.parse_sfo_segment`.
+    ax : matplotlib.axes.Axes
+        Axes to draw on.
+    perp_scale : float
+        If > 0, the field strength is drawn as perpendicular lines of this
+        maximum length.
+    max_field : float
+        Maximum field value, used to normalize the perpendicular line
+        lengths and colors.
+    field : str
+        Wall field column to draw, e.g. ``"E"`` or ``"H"``.
+    cmap : matplotlib.colors.Colormap, optional
+        Color map for the perpendicular lines. Defaults to
+        :func:`get_cmap0`.
+    conv : float
+        Unit conversion factor used by Superfish.
     """
 
     x = seg["wall"]["Z"] * conv
@@ -108,25 +180,48 @@ def add_wall_segment_to_axes(
 
 
 def plot_wall(
-    wall_segments,
-    perp_scale=0,
-    field="E",
-    max_field=None,
-    cmap=None,
-    ax=None,
-    conv=1,
-    return_figure=False,
-    **kwargs,
-):
+    wall_segments: list[dict[str, Any]],
+    perp_scale: float = 0,
+    field: str = "E",
+    max_field: float | None = None,
+    cmap: Colormap | None = None,
+    ax: Axes | None = None,
+    conv: float = 1,
+    return_figure: bool = False,
+    **kwargs: Any,
+) -> Figure | None:
     """
-    Plots the wall from wall segments.
-
-    If perp_scale > 0, the field will be plotted
-
-    conv is the conversion factor to internal units. If given, the
+    Plot the wall from wall segments.
 
     TODO: this is only for FISH problems so far
 
+    Parameters
+    ----------
+    wall_segments : list of dict
+        Parsed wall segments, as returned in the ``wall_segments`` key of
+        :func:`superfish.parsers.parse_sfo`.
+    perp_scale : float
+        If > 0, the field is plotted as perpendicular lines along the wall.
+    field : str
+        Wall field column to plot, e.g. ``"E"`` or ``"H"``.
+    max_field : float, optional
+        Maximum field for normalization. Defaults to the maximum over all
+        segments.
+    cmap : matplotlib.colors.Colormap, optional
+        Color map for the field lines. Defaults to ``plasma``.
+    ax : matplotlib.axes.Axes, optional
+        Axes to draw on. If not given, a new figure is created.
+    conv : float
+        Conversion factor to internal units (cm).
+    return_figure : bool
+        Return the figure object.
+    **kwargs
+        Passed to ``plt.subplots`` when creating a new figure.
+
+    Returns
+    -------
+    matplotlib.figure.Figure or None
+        The figure, if ``return_figure`` is True.
     """
 
     if not ax:
