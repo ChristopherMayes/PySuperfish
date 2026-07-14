@@ -58,9 +58,10 @@ singularity pull --docker-login docker://hhslepicka/poisson-superfish:latest
 
 ### Configuration
 
-The container image and Singularity `.sif` path can be configured with the
-`PYSUPERFISH_CONTAINER_IMAGE` and `PYSUPERFISH_SINGULARITY_IMAGE` environment
-variables. See the
+The container image, Singularity `.sif` path, and container method can be
+configured with the `PYSUPERFISH_CONTAINER_IMAGE`,
+`PYSUPERFISH_SINGULARITY_IMAGE`, and `PYSUPERFISH_CONTAINER_METHOD`
+environment variables. See the
 [documentation](https://christophermayes.github.io/PySuperfish/installation/#environment-variables)
 for details.
 

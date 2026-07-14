@@ -73,11 +73,13 @@ The path to the `.sif` image can be configured with the
 | --- | --- | --- |
 | `PYSUPERFISH_CONTAINER_IMAGE` | `poisson-superfish:latest` | Image tag used when running through Docker or Shifter. |
 | `PYSUPERFISH_SINGULARITY_IMAGE` | `~/poisson-superfish_latest.sif` | Path to the Singularity `.sif` image. If Singularity is available and this file exists, it is preferred over the other runtimes. |
+| `PYSUPERFISH_CONTAINER_METHOD` | auto-detect | Container method to use: `docker`, `shifter`, or `singularity`. The `container_method` argument to `Superfish` takes precedence. |
 
 The container build script (`docker-poisson-superfish/build.sh`) honors the
-same variables, so a single setting configures both the build and runtime.
+two image variables, so a single setting configures both the build and
+runtime.
 
-Both variables are read when the `superfish` module is imported, so set them
+The variables are read when the `superfish` module is imported, so set them
 before importing (or override the `Superfish._container_image` /
 `Superfish._singularity_image` class attributes afterwards):
 

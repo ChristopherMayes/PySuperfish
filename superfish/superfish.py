@@ -22,21 +22,44 @@ class Superfish:
     _singularity_image = os.environ.get(
         "PYSUPERFISH_SINGULARITY_IMAGE", "~/poisson-superfish_latest.sif"
     )
+    # Default container method; None means auto-detect
+    _container_method = os.environ.get("PYSUPERFISH_CONTAINER_METHOD")
 
-    if shutil.which("singularity") and os.path.exists(
-        os.path.expanduser(_singularity_image)
-    ):
-        _container_command = "singularity exec {singularity_image} {cmds}"
-    elif shutil.which("docker"):
-        _container_command = (
+    _container_commands = {
+        "docker": (
             "docker run {interactive_flags} --rm -v {local_path}:/data/ {image} {cmds}"
-        )
-    elif shutil.which("shifter"):
-        _container_command = "shifter --image={image} {cmds}"
-    elif shutil.which("singularity"):
-        _container_command = "singularity exec {singularity_image} {cmds}"
-    else:
-        _container_command = None
+        ),
+        "shifter": "shifter --image={image} {cmds}",
+        "singularity": "singularity exec {singularity_image} {cmds}",
+    }
+
+    @classmethod
+    def _detect_container_method(cls):
+        """
+        Pick a container method based on the available executables.
+
+        Prefers Singularity when its image file already exists, then Docker,
+        then Shifter, then Singularity even without a pre-built image.
+        Returns None if no method is available.
+        """
+        if shutil.which("singularity") and os.path.exists(
+            os.path.expanduser(cls._singularity_image)
+        ):
+            return "singularity"
+        if shutil.which("docker"):
+            return "docker"
+        if shutil.which("shifter"):
+            return "shifter"
+        if shutil.which("singularity"):
+            return "singularity"
+        return None
+
+    @property
+    def container_command(self):
+        """Command template for the selected container method, or None."""
+        if self.container_method is None:
+            return None
+        return self._container_commands[self.container_method]
 
     def __init__(
         self,
@@ -44,6 +67,7 @@ class Superfish:
         problem="fish",
         use_tempdir=True,
         use_container="auto",
+        container_method=None,
         interactive=False,
         workdir=None,
         verbose=True,
@@ -51,7 +75,30 @@ class Superfish:
         """
         Poisson-Superfish object
 
-
+        Parameters
+        ----------
+        automesh : str, optional
+            Path to an automesh input file. If given, it is loaded and the
+            object is configured to run.
+        problem : {"fish", "poisson"}
+            Type of problem to run.
+        use_tempdir : bool
+            Run in a temporary directory instead of in place.
+        use_container : "auto" or bool
+            Whether to run through a container. "auto" uses the native
+            executables on Windows and a container elsewhere.
+        container_method : {"docker", "shifter", "singularity"}, optional
+            Container orchestration method. If not given, defaults to the
+            PYSUPERFISH_CONTAINER_METHOD environment variable; if that is
+            also unset, the first available method is auto-detected:
+            Singularity with an existing image, then Docker, then Shifter,
+            then Singularity without an image.
+        interactive : bool
+            Run the container in interactive (X11) mode. macOS only.
+        workdir : str, optional
+            Base directory for the working directory.
+        verbose : bool
+            Print progress messages.
         """
         self.configured = False
         self.problem = problem
@@ -68,6 +115,20 @@ class Superfish:
             self.load_input(automesh)
             self.configure()
 
+        if container_method is None:
+            container_method = self._container_method
+        if container_method is None:
+            container_method = self._detect_container_method()
+        else:
+            container_method = str(container_method).lower()
+            if container_method not in self._container_commands:
+                options = ", ".join(sorted(self._container_commands))
+                raise ValueError(
+                    f"Unknown container_method {container_method!r}; "
+                    f"choose from: {options}"
+                )
+        self.container_method = container_method
+
         if use_container == "auto":
             if platform.system() == "Windows" and os.path.exists(
                 self._windows_exe_path
@@ -76,8 +137,10 @@ class Superfish:
                 self.vprint(f"Using executables installed in {self._windows_exe_path}")
 
             else:
-                self.vprint(f"Using container on {platform.system()}:")
-                self.vprint("    ", self._container_command)
+                self.vprint(
+                    f"Using {self.container_method} container on {platform.system()}:"
+                )
+                self.vprint("    ", self.container_command)
                 self.use_container = True
 
         else:
@@ -218,6 +281,13 @@ class Superfish:
 
         cmds = " ".join(args)
 
+        template = self.container_command
+        if template is None:
+            raise RuntimeError(
+                "No container method available: "
+                "docker, shifter, or singularity not found"
+            )
+
         if self.interactive:
             assert platform.system() == "Darwin", "TODO interactive non-Darwin"
             cmd0 = "IP=$(ifconfig en0 | grep inet | awk '$1==\"inet\" {print $2}');xhost + $IP;"
@@ -226,7 +296,7 @@ class Superfish:
             cmd0 = ""
             interactive_flags = ""
 
-        cmd = self._container_command.format(
+        cmd = template.format(
             local_path=self.path,
             image=self._container_image,
             interactive_flags=interactive_flags,
@@ -266,10 +336,8 @@ class Superfish:
         logfile = os.path.join(self.path, "output.log")
 
         if self.use_container:
-            # Shifter doesn't need volume mounting
-            if self._container_command.startswith(
-                "shifter"
-            ) or self._container_command.startswith("singularity"):
+            # Shifter and Singularity don't need volume mounting
+            if self.container_method in ("shifter", "singularity"):
                 cwd = self.path
             else:
                 cwd = None

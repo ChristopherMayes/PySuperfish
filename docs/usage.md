@@ -25,7 +25,8 @@ sf.run()
   [environment variables](installation.md#environment-variables).
 - `container_method="docker"` (or `"shifter"`, `"singularity"`) forces a
   specific container runtime instead of auto-detecting the first available
-  one.
+  one. The default can also be set with the `PYSUPERFISH_CONTAINER_METHOD`
+  environment variable.
 
 ## Inspecting output
 
