@@ -9,6 +9,8 @@ from matplotlib.colors import Colormap
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from .types import FishT7Data, PoissonT7Data, WallSegment
+
 
 def get_cmap0() -> Colormap:
     """
@@ -25,7 +27,7 @@ def get_cmap0() -> Colormap:
 
 
 def add_t7data_to_axes(
-    t7data: dict[str, Any],
+    t7data: FishT7Data | PoissonT7Data,
     ax: Axes,
     field: str = "E",
     cmap: Colormap | None = None,
@@ -37,7 +39,7 @@ def add_t7data_to_axes(
 
     Parameters
     ----------
-    t7data : dict
+    t7data : FishT7Data or PoissonT7Data
         Parsed T7 data, as returned by
         :func:`superfish.parsers.parse_fish_t7` or
         :func:`superfish.parsers.parse_poisson_t7`.
@@ -122,7 +124,7 @@ def perp(
 
 
 def add_wall_segment_to_axes(
-    seg: dict[str, Any],
+    seg: WallSegment,
     ax: Axes,
     perp_scale: float = 0,
     max_field: float = 1,
@@ -135,7 +137,7 @@ def add_wall_segment_to_axes(
 
     Parameters
     ----------
-    seg : dict
+    seg : WallSegment
         Parsed wall segment, as returned by
         :func:`superfish.parsers.parse_sfo_segment`.
     ax : matplotlib.axes.Axes
@@ -180,7 +182,7 @@ def add_wall_segment_to_axes(
 
 
 def plot_wall(
-    wall_segments: list[dict[str, Any]],
+    wall_segments: list[WallSegment],
     perp_scale: float = 0,
     field: str = "E",
     max_field: float | None = None,
@@ -197,7 +199,7 @@ def plot_wall(
 
     Parameters
     ----------
-    wall_segments : list of dict
+    wall_segments : list of WallSegment
         Parsed wall segments, as returned in the ``wall_segments`` key of
         :func:`superfish.parsers.parse_sfo`.
     perp_scale : float

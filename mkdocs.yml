@@ -19,6 +19,7 @@ nav:
       - Writers: api/writers.md
       - Plotting: api/plot.md
       - Interpolation: api/interpolate.md
+      - Types: api/types.md
 
 theme:
   icon:

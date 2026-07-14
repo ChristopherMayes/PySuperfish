@@ -1,21 +1,22 @@
 import warnings
-from typing import Any
 
 import numpy as np
 import scipy.constants
+
+from .types import ExternalFieldData, FishT7Data, PoissonT7Data
 
 mu_0 = scipy.constants.mu_0
 
 
 def fish_externalfield_data(
-    t7data: dict[str, Any],
+    t7data: FishT7Data,
     eleAnchorPt: str = "beginning",
     fieldScale: float = 1,
     RFphase: float = 0,
     z_offset: float = 0,
     name: str | None = None,
     normalize_by_Ez0: bool = False,
-) -> dict[str, dict[str, Any]]:
+) -> ExternalFieldData:
     """
     Convert Fish t7data to openPMD external field data.
 
@@ -37,7 +38,7 @@ def fish_externalfield_data(
 
     Parameters
     ----------
-    t7data : dict
+    t7data : FishT7Data
         Parsed T7 data in the native Superfish units, as returned by
         :func:`superfish.parsers.parse_fish_t7`.
     eleAnchorPt : {"beginning", "center", "end"}
@@ -55,7 +56,7 @@ def fish_externalfield_data(
 
     Returns
     -------
-    dict
+    ExternalFieldData
         Keys ``attrs`` and ``components``, ready to be written to an HDF5
         file.
     """
@@ -122,20 +123,20 @@ def fish_externalfield_data(
 
 
 def poisson_externalfield_data(
-    t7data: dict[str, Any],
+    t7data: PoissonT7Data,
     eleAnchorPt: str = "beginning",
     fieldScale: float = 1,
     type: str = "electric",
     z_offset: float = 0,
     name: str | None = None,
     normalize_by_fz0: bool = False,
-) -> dict[str, dict[str, Any]]:
+) -> ExternalFieldData:
     """
     Convert Poisson t7data to openPMD external field data.
 
     Parameters
     ----------
-    t7data : dict
+    t7data : PoissonT7Data
         Parsed T7 data in the native Superfish units, as returned by
         :func:`superfish.parsers.parse_poisson_t7`.
     eleAnchorPt : {"beginning", "center", "end"}
@@ -153,7 +154,7 @@ def poisson_externalfield_data(
 
     Returns
     -------
-    dict
+    ExternalFieldData
         Keys ``attrs`` and ``components``, ready to be written to an HDF5
         file.
     """
@@ -230,7 +231,7 @@ def poisson_externalfield_data(
 
 def write_fish_t7(
     filename: str,
-    t7data: dict[str, Any],
+    t7data: FishT7Data,
     fmt: str = "%10.8e",
 ) -> str:
     """
@@ -240,7 +241,7 @@ def write_fish_t7(
     ----------
     filename : str
         Path of the T7 file to write.
-    t7data : dict
+    t7data : FishT7Data
         Parsed T7 data, as returned by
         :func:`superfish.parsers.parse_fish_t7`.
     fmt : str
@@ -279,7 +280,7 @@ def write_fish_t7(
 
 def write_poisson_t7(
     filename: str,
-    t7data: dict[str, Any],
+    t7data: PoissonT7Data,
     fmt: str = "%10.8e",
 ) -> str:
     """
@@ -289,7 +290,7 @@ def write_poisson_t7(
     ----------
     filename : str
         Path of the T7 file to write.
-    t7data : dict
+    t7data : PoissonT7Data
         Parsed T7 data, as returned by
         :func:`superfish.parsers.parse_poisson_t7`.
     fmt : str

@@ -7,6 +7,7 @@ from time import time
 from typing import TYPE_CHECKING, Any
 
 from . import parsers
+from .types import FishT7Data, PoissonT7Data
 from .interpolate import interpolate2d
 from .plot import plot_wall
 
@@ -329,7 +330,7 @@ class Superfish:
         rmin: float = 0,
         rmax: float = 0,
         nr: int = 1,
-    ) -> dict[str, Any]:
+    ) -> FishT7Data | PoissonT7Data:
         """
         Interpolate the field over a grid.
 
@@ -346,7 +347,7 @@ class Superfish:
 
         Returns
         -------
-        dict
+        FishT7Data or PoissonT7Data
             t7data dict, as returned by
             :func:`superfish.interpolate.interpolate2d`.
         """

@@ -1,0 +1,3 @@
+# Types
+
+::: superfish.types

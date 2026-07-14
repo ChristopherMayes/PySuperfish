@@ -1,6 +1,16 @@
-from typing import Any
-
 import numpy as np
+
+from .types import (
+    FishT7Data,
+    PoissonT7Data,
+    SFOGroup,
+    SFOHeader,
+    SFOOutput,
+    SFOSummary,
+    UnparsedGroup,
+    WallSegment,
+    WallSegmentData,
+)
 
 
 def parse_automesh(file: str) -> list[str]:
@@ -20,7 +30,7 @@ def parse_automesh(file: str) -> list[str]:
     return open(file, "r").readlines()
 
 
-def parse_sfo(filename: str, verbose: bool = False) -> dict[str, Any]:
+def parse_sfo(filename: str, verbose: bool = False) -> SFOOutput:
     """
     Master parser for the SFO file.
 
@@ -33,7 +43,7 @@ def parse_sfo(filename: str, verbose: bool = False) -> dict[str, Any]:
 
     Returns
     -------
-    dict
+    SFOOutput
         Parsed output with keys:
 
         - ``wall_segments`` : list of dict, one per wall segment.
@@ -72,7 +82,7 @@ def parse_sfo(filename: str, verbose: bool = False) -> dict[str, Any]:
     return d
 
 
-def parse_sfo_into_groups(filename: str) -> list[dict[str, Any]]:
+def parse_sfo_into_groups(filename: str) -> list[SFOGroup]:
     """
     Parse an SFO file into groups.
 
@@ -86,7 +96,7 @@ def parse_sfo_into_groups(filename: str) -> list[dict[str, Any]]:
 
     Returns
     -------
-    list of dict
+    list of SFOGroup
         One dict per group, with keys:
 
         - ``raw_type`` : str, the first line of the group.
@@ -131,13 +141,16 @@ def parse_sfo_into_groups(filename: str) -> list[dict[str, Any]]:
     return groups
 
 
-def process_group(group: dict[str, Any], verbose: bool = False) -> dict[str, Any]:
+def process_group(
+    group: SFOGroup,
+    verbose: bool = False,
+) -> SFOSummary | WallSegment | UnparsedGroup:
     """
     Process a single output group dict into usable data.
 
     Parameters
     ----------
-    group : dict
+    group : SFOGroup
         Group dict with ``raw_type`` and ``lines`` keys, as returned by
         :func:`parse_sfo_into_groups`.
     verbose : bool
@@ -145,7 +158,7 @@ def process_group(group: dict[str, Any], verbose: bool = False) -> dict[str, Any
 
     Returns
     -------
-    dict
+    SFOSummary or WallSegment or UnparsedGroup
         Parsed group with a ``type`` key identifying the group
         (``summary``, ``wall_segment``, ``BeamEnergy``, or the raw type
         line for unparsed groups) and type-dependent data keys.
@@ -187,7 +200,7 @@ def process_group(group: dict[str, Any], verbose: bool = False) -> dict[str, Any
 # T7 files
 
 
-def parse_fish_t7(t7file: str, geometry: str = "cylindrical") -> dict[str, Any]:
+def parse_fish_t7(t7file: str, geometry: str = "cylindrical") -> FishT7Data:
     """
     Parse a Fish T7 file.
 
@@ -210,7 +223,7 @@ def parse_fish_t7(t7file: str, geometry: str = "cylindrical") -> dict[str, Any]:
 
     Returns
     -------
-    dict
+    FishT7Data
         Parsed data with keys:
 
         - ``geometry`` : str
@@ -258,7 +271,7 @@ def parse_poisson_t7(
     t7file: str,
     type: str = "electric",
     geometry: str = "cylindrical",
-) -> dict[str, Any]:
+) -> PoissonT7Data:
     """
     Parse a Poisson T7 file.
 
@@ -283,7 +296,7 @@ def parse_poisson_t7(
 
     Returns
     -------
-    dict
+    PoissonT7Data
         Parsed data with keys:
 
         - ``geometry`` : str
@@ -383,7 +396,7 @@ def parse_header_variable(line: str) -> tuple[str, int | float, str, bool]:
     return key, val, descrip, in_automesh
 
 
-def parse_header_lines(lines: list[str]) -> dict[str, Any]:
+def parse_header_lines(lines: list[str]) -> SFOHeader:
     """
     Parse the SFO header lines.
 
@@ -394,7 +407,7 @@ def parse_header_lines(lines: list[str]) -> dict[str, Any]:
 
     Returns
     -------
-    dict
+    SFOHeader
         Parsed header with keys:
 
         - ``variable`` : dict of variable name to value.
@@ -466,7 +479,7 @@ def parse_wall_segment_line1(line: str) -> dict[str, int]:
     return d
 
 
-def parse_sfo_segment(lines: list[str]) -> dict[str, Any]:
+def parse_sfo_segment(lines: list[str]) -> WallSegmentData:
     """
     Parse a wall segment group.
 
@@ -480,7 +493,7 @@ def parse_sfo_segment(lines: list[str]) -> dict[str, Any]:
 
     Returns
     -------
-    dict
+    WallSegmentData
         Parsed segment with keys:
 
         - ``wall`` : dict of column name to ndarray of values.

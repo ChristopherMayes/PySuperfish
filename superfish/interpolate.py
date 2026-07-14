@@ -1,10 +1,11 @@
 import os
 from glob import glob
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from beamphysics import FieldMesh
 
 from superfish.parsers import parse_fish_t7, parse_poisson_t7
+from superfish.types import FishT7Data, PoissonT7Data
 
 if TYPE_CHECKING:
     from superfish.superfish import Superfish
@@ -36,7 +37,7 @@ def interpolate2d(
     rmax: float = 0,
     nr: int = 1,
     return_fieldmesh: bool = False,
-) -> dict[str, Any] | FieldMesh:
+) -> FishT7Data | PoissonT7Data | FieldMesh:
     """
     Interpolate the solved field onto a grid using SF7.
 
@@ -65,7 +66,7 @@ def interpolate2d(
 
     Returns
     -------
-    dict or FieldMesh
+    FishT7Data or PoissonT7Data or FieldMesh
         If ``return_fieldmesh`` is False, a t7data dict with keys:
 
         - ``rmin``, ``rmax`` : float, radial extent in cm.
