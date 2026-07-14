@@ -1,9 +1,9 @@
+import warnings
+
 import numpy as np
 import scipy.constants
 
 mu_0 = scipy.constants.mu_0
-
-import warnings
 
 
 def fish_externalfield_data(

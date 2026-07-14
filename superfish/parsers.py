@@ -19,7 +19,6 @@ def parse_sfo(filename, verbose=False):
     groups = parse_sfo_into_groups(filename)
 
     d = {"wall_segments": [], "other": {}}
-    segments = []
 
     for g in groups:
         dat = process_group(g, verbose=verbose)

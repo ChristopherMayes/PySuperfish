@@ -2,13 +2,16 @@ import matplotlib.pyplot as plt
 import matplotlib
 from copy import copy
 
-# Get a default color map
-CMAP0 = copy(plt.get_cmap("plasma"))
-CMAP0.set_under("white")
-
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import numpy as np
+
+
+def get_cmap0():
+    # Get a default color map
+    cmap0 = copy(plt.get_cmap("plasma"))
+    cmap0.set_under("white")
+    return cmap0
 
 
 def add_t7data_to_axes(t7data, ax, field="E", cmap=None, vmin=1e-19, scale=1):
@@ -23,7 +26,7 @@ def add_t7data_to_axes(t7data, ax, field="E", cmap=None, vmin=1e-19, scale=1):
     extent = [t7data[k] * scale for k in ("zmin", "zmax", "rmin", "rmax")]
 
     if not cmap:
-        cmap = CMAP0
+        cmap = get_cmap0()
 
     if field in ("E", "B") and field not in t7data:
         data = np.hypot(t7data[field + "r"], t7data[field + "z"])
@@ -95,7 +98,7 @@ def add_wall_segment_to_axes(
         px, py = perp(x, y, scale=scales)
 
         if not cmap:
-            cmap = CMAP0
+            cmap = get_cmap0()
 
         color = cmap(F[:-1])
 
