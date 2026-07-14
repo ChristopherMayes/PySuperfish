@@ -1,0 +1,4 @@
+/* Widen the content area for API tables and notebook output */
+.md-grid {
+  max-width: 1440px;
+}
