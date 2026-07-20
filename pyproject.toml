@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pySuperfish"
+description = "Python interface to Poisson Superfish"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dynamic = ["version"]
+dependencies = ["numpy", "matplotlib", "openpmd-beamphysics"]
+
+[project.optional-dependencies]
+docs = [
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocs-jupyter",
+  "mkdocstrings[python]",
+  "ruff",
+]
+
+[project.urls]
+Homepage = "https://github.com/ChristopherMayes/PySuperfish"
+
+[tool.setuptools.packages.find]
+include = ["superfish*"]
+
+[tool.ty.src]
+exclude = ["docs/", "examples/"]
+
+[tool.setuptools_scm]
+version_file = "superfish/_version.py"

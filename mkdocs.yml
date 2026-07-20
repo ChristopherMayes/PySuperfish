@@ -1,0 +1,104 @@
+site_name: PySuperfish
+repo_url: https://github.com/ChristopherMayes/PySuperfish
+repo_name: ChristopherMayes/PySuperfish
+
+nav:
+  - Home: index.md
+
+  - Installation: installation.md
+
+  - Usage: usage.md
+
+  - Examples:
+      - examples/superfish_basic_example.ipynb
+      - examples/poisson_example.ipynb
+
+  - API:
+      - Superfish: api/superfish.md
+      - Parsers: api/parsers.md
+      - Writers: api/writers.md
+      - Plotting: api/plot.md
+      - Interpolation: api/interpolate.md
+      - Types: api/types.md
+
+theme:
+  icon:
+    repo: fontawesome/brands/github
+  name: material
+
+  custom_dir: docs/overrides
+  features:
+    - navigation.top
+    - navigation.tabs
+    - navigation.indexes
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ChristopherMayes/PySuperfish
+      name: PySuperfish
+
+extra_css:
+  - stylesheets/extra.css
+
+plugins:
+  - search
+
+  - mkdocs-jupyter:
+      include_source: True
+
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            filters:
+              - "!^_" # exclude all members starting with _
+              - "^__init__$" # but always include __init__ modules and methods
+            docstring_style: numpy
+            docstring_options:
+              ignore_init_summary: false
+            heading_level: 3
+            show_root_heading: true
+            show_root_toc_entry: true
+            show_root_full_path: true
+            show_root_members_full_path: false
+            show_object_full_path: true
+            show_category_heading: true
+            show_if_no_docstring: false
+            show_signature: true
+            signature_crossrefs: true
+            show_signature_annotations: false
+            separate_signature: true
+            line_length: 100
+            merge_init_into_class: true
+            show_source: true
+            show_bases: true
+            show_submodules: false
+            group_by_category: true
+            unwrap_annotated: true
+          inventories:
+            - https://docs.python.org/3/objects.inv
